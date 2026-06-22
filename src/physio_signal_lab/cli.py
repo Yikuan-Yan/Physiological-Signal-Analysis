@@ -5,7 +5,12 @@ import argparse
 import sys
 
 from physio_signal_lab.config import load_config
+from physio_signal_lab.evaluation.artifacts import (
+    artifact_experiment,
+    summarize_artifact_experiment,
+)
 from physio_signal_lab.evaluation.peak_benchmark import benchmark_records
+from physio_signal_lab.features.rr_nn import build_reference_intervals, window_metrics
 from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manifest
 from physio_signal_lab.manifest import validate_manifest
 
@@ -91,6 +96,54 @@ def benchmark_peaks(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_rr_artifacts(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _record_ids(config, args.records)
+    raw_dir = config["dataset"]["raw_dir"]
+    rr_config = config["rr_nn"]
+    artifact_config = config["artifact_experiment"]
+    outputs = config["outputs"]
+
+    intervals = build_reference_intervals(
+        records,
+        raw_dir,
+        normal_symbols=set(rr_config["normal_symbols"]),
+        valid_rr_min_ms=float(rr_config["valid_rr_ms"]["min"]),
+        valid_rr_max_ms=float(rr_config["valid_rr_ms"]["max"]),
+    )
+    intervals_out = _ensure_parent(outputs["reference_intervals_csv"])
+    intervals.to_csv(intervals_out, index=False)
+    print(f"wrote {intervals_out} rows={len(intervals)}")
+
+    windows = window_metrics(
+        intervals,
+        window_seconds=float(rr_config["window_seconds"]),
+    )
+    windows_out = _ensure_parent(outputs["window_metrics_csv"])
+    windows.to_csv(windows_out, index=False)
+    print(f"wrote {windows_out} rows={len(windows)}")
+
+    sensitivity = artifact_experiment(
+        intervals,
+        artifact_types=list(artifact_config["types"]),
+        rates=[float(rate) for rate in artifact_config["rates"]],
+        repeats=int(artifact_config["repeats"]),
+        strategies=list(artifact_config["strategies"]),
+        seed=int(artifact_config["seed"]),
+        jitter_ms=float(artifact_config["jitter_ms"]),
+        ectopic_shift_fraction=float(artifact_config["ectopic_shift_fraction"]),
+    )
+    sensitivity_out = _ensure_parent(outputs["artifact_sensitivity_csv"])
+    sensitivity.to_csv(sensitivity_out, index=False)
+    print(f"wrote {sensitivity_out} rows={len(sensitivity)}")
+
+    summary = summarize_artifact_experiment(sensitivity)
+    summary_out = _ensure_parent(outputs["artifact_summary_csv"])
+    summary.to_csv(summary_out, index=False)
+    print(f"wrote {summary_out} rows={len(summary)}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -111,8 +164,13 @@ def run_ecg_core(args: argparse.Namespace) -> int:
         out=config["outputs"]["peak_benchmark_csv"],
         failure_plot_count=None,
     )
+    rr_artifact_args = argparse.Namespace(
+        config=args.config,
+        records=records_arg,
+    )
     inventory_fantasia(inventory_args)
     benchmark_peaks(benchmark_args)
+    run_rr_artifacts(rr_artifact_args)
     return 0
 
 
@@ -136,6 +194,11 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--out", default=None)
     benchmark_parser.add_argument("--failure-plot-count", type=int, default=None)
     benchmark_parser.set_defaults(func=benchmark_peaks)
+
+    rr_artifacts_parser = subparsers.add_parser("run-rr-artifacts")
+    rr_artifacts_parser.add_argument("--config", default="configs/hrv_core.yaml")
+    rr_artifacts_parser.add_argument("--records", default=None)
+    rr_artifacts_parser.set_defaults(func=run_rr_artifacts)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

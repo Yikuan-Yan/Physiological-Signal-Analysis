@@ -25,7 +25,39 @@ benchmark:
   failure_plot_count: 5
   failure_window_seconds: 30
 
+rr_nn:
+  normal_symbols:
+    - N
+  valid_rr_ms:
+    min: 300
+    max: 2000
+  window_seconds: 300
+
+artifact_experiment:
+  seed: 20260622
+  rates:
+    - 0.001
+    - 0.005
+    - 0.01
+    - 0.03
+  repeats: 20
+  types:
+    - missed_beat
+    - spurious_extra_beat
+    - timestamp_jitter
+    - ectopic_short_long
+  strategies:
+    - no_correction
+    - delete_flagged_intervals
+    - interpolate_flagged_intervals
+  jitter_ms: 50
+  ectopic_shift_fraction: 0.3
+
 outputs:
   inventory_csv: results/data_quality/fantasia_inventory.csv
   peak_benchmark_csv: results/peak_benchmark/peak_benchmark_by_record.csv
   failure_plot_dir: figures/peak_failures
+  reference_intervals_csv: results/rr_nn/reference_intervals.csv
+  window_metrics_csv: results/rr_nn/window_metrics.csv
+  artifact_sensitivity_csv: results/artifacts/artifact_sensitivity.csv
+  artifact_summary_csv: results/artifacts/artifact_summary.csv
