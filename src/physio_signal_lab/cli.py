@@ -27,6 +27,7 @@ from physio_signal_lab.io.sleep_edf import (
 from physio_signal_lab.manifest import validate_manifest
 from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
+from physio_signal_lab.sleep_edf_benchmark import run_sleep_edf_pilot_benchmark
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
 
 
@@ -285,6 +286,19 @@ def validate_sleep_edf(args: argparse.Namespace) -> int:
     return 0 if missing == 0 and checksum_mismatches == 0 else 1
 
 
+def sleep_edf_pilot_benchmark(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    if records is None:
+        records = [f"SC{int(subject):03d}1" for subject in config["selection"]["pilot_subjects"]]
+    outputs = run_sleep_edf_pilot_benchmark(config, records=records)
+    print(f"wrote {outputs.epoch_labels_csv}")
+    print(f"wrote {outputs.baseline_metrics_csv}")
+    print(f"wrote {outputs.stage_summary_csv}")
+    print(f"wrote {outputs.report_md}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -384,6 +398,11 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_edf_validate_parser.add_argument("--config", default="configs/sleep_edf.yaml")
     sleep_edf_validate_parser.add_argument("--records", default=None)
     sleep_edf_validate_parser.set_defaults(func=validate_sleep_edf)
+
+    sleep_edf_benchmark_parser = subparsers.add_parser("run-sleep-edf-pilot-benchmark")
+    sleep_edf_benchmark_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    sleep_edf_benchmark_parser.add_argument("--records", default=None)
+    sleep_edf_benchmark_parser.set_defaults(func=sleep_edf_pilot_benchmark)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

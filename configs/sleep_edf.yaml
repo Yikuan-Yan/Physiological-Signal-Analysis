@@ -63,7 +63,7 @@ sleep_stages:
 
 channels:
   staging:
-    eeg_name: Fpz-Cz
+    eeg_name: EEG Fpz-Cz
     eog_name: EOG horizontal
     emg_name: EMG submental
     preprocessing: yasa_sleepstaging_no_prefilter_or_zscore
@@ -74,4 +74,8 @@ outputs:
   manifest_csv: data_manifest_sleep_edf.csv
   download_summary_csv: results/sleep_edf/download_summary.csv
   validation_csv: results/sleep_edf/sleep_edf_validation.csv
+  epoch_labels_csv: results/sleep_edf/pilot_epoch_labels.csv
+  baseline_metrics_csv: results/sleep_edf/pilot_baseline_metrics.csv
+  baseline_stage_summary_csv: results/sleep_edf/pilot_stage_summary.csv
   preflight_report_md: reports/sleep_edf_preflight.md
+  pilot_benchmark_report_md: reports/sleep_edf_pilot_benchmark.md

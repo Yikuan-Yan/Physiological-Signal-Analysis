@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from physio_signal_lab.config import load_config
@@ -15,6 +16,12 @@ from physio_signal_lab.io.sleep_edf import (
     parse_sleep_edf_filename,
     update_manifest_checksums,
     validate_sleep_edf_manifest,
+)
+from physio_signal_lab.evaluation.sleep_staging import (
+    expand_stage_annotations,
+    majority_stage_predictions,
+    parse_sleep_stage_description,
+    sleep_stage_metrics,
 )
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
 
@@ -130,6 +137,57 @@ def test_sleep_stage_mapping_and_epoch_alignment():
 def test_sleep_stage_mapping_rejects_unknown_label():
     with pytest.raises(ValueError):
         map_rk_label("N2")
+
+
+def test_expand_stage_annotations_maps_and_crops_to_signal_duration():
+    annotations = [
+        {"onset": 0.0, "duration": 60.0, "description": "Sleep stage W"},
+        {"onset": 60.0, "duration": 30.0, "description": "Sleep stage 3"},
+        {"onset": 90.0, "duration": 60.0, "description": "Sleep stage ?"},
+        {"onset": 150.0, "duration": 60.0, "description": "Sleep stage R"},
+    ]
+
+    labels = expand_stage_annotations(
+        pd.DataFrame(annotations),
+        record_id="SC4001",
+        signal_duration_seconds=180.0,
+        epoch_seconds=30.0,
+    )
+
+    assert len(labels) == 6
+    assert labels["epoch_index"].tolist() == list(range(6))
+    assert labels["mapped_stage"].tolist() == ["WAKE", "WAKE", "N3", "", "", "REM"]
+    assert labels["included"].tolist() == [True, True, True, False, False, True]
+
+
+def test_parse_sleep_stage_description_rejects_non_stage_annotations():
+    assert parse_sleep_stage_description("Sleep stage R") == "R"
+    with pytest.raises(ValueError):
+        parse_sleep_stage_description("Lights off")
+
+
+def test_majority_baseline_metrics_are_record_and_all_level():
+    labels = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "mapped_stage": "N2", "included": True},
+            {"record_id": "SC4011", "mapped_stage": "N2", "included": True},
+            {"record_id": "SC4011", "mapped_stage": "REM", "included": True},
+            {"record_id": "SC4011", "mapped_stage": "", "included": False},
+        ]
+    )
+
+    predictions = majority_stage_predictions(labels)
+    metrics = sleep_stage_metrics(predictions, model_name="majority")
+
+    assert predictions[predictions["record_id"] == "SC4001"]["predicted_stage"].unique().tolist() == [
+        "WAKE"
+    ]
+    assert set(metrics["record_id"]) == {"SC4001", "SC4011", "all"}
+    overall = metrics[metrics["record_id"] == "all"].iloc[0]
+    assert overall["epoch_count"] == 5
+    assert 0.0 <= overall["macro_f1"] <= 1.0
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):

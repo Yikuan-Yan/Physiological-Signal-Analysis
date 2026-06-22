@@ -1,0 +1,4 @@
+record_id,model,epoch_count,majority_reference_stage,predicted_majority_stage,accuracy,balanced_accuracy,cohen_kappa,macro_f1,wake_precision,wake_recall,wake_f1,wake_support,n1_precision,n1_recall,n1_f1,n1_support,n2_precision,n2_recall,n2_f1,n2_support,n3_precision,n3_recall,n3_f1,n3_support,rem_precision,rem_recall,rem_f1,rem_support
+SC4001,majority_stage_baseline,2650,WAKE,WAKE,0.7535849056603774,0.2,0.0,0.17189584678287068,0.7535849056603774,1.0,0.8594792339143533,1997,0.0,0.0,0.0,58,0.0,0.0,0.0,250,0.0,0.0,0.0,220,0.0,0.0,0.0,125
+SC4011,majority_stage_baseline,2802,WAKE,WAKE,0.662384011420414,0.2,0.0,0.15938170888793474,0.662384011420414,1.0,0.7969085444396736,1856,0.0,0.0,0.0,109,0.0,0.0,0.0,562,0.0,0.0,0.0,105,0.0,0.0,0.0,170
+all,majority_stage_baseline,5452,WAKE,WAKE,0.7067131327953045,0.2,0.0,0.16563138097796884,0.7067131327953045,1.0,0.8281569048898442,3853,0.0,0.0,0.0,167,0.0,0.0,0.0,812,0.0,0.0,0.0,325,0.0,0.0,0.0,295
