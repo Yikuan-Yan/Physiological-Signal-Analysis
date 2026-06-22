@@ -1,0 +1,40 @@
+{
+  "bundled_files": [
+    {
+      "bundled_path": "config/hrv_core.yaml",
+      "bytes": 1905,
+      "role": "config",
+      "sha256": "c86130303aa09576571a93237c69b34bbfa13d156002cf2a03c519b69f549848",
+      "source_path": "configs/hrv_core.yaml"
+    },
+    {
+      "bundled_path": "manifest/data_manifest.csv",
+      "bytes": 31983,
+      "role": "manifest",
+      "sha256": "5ffe2fe854c5af300e49fd962712edfb83e65ce5df7341fca632b4d971dc6d6f",
+      "source_path": "data_manifest.csv"
+    },
+    {
+      "bundled_path": "report/hrv_core_report.md",
+      "bytes": 6817,
+      "role": "report",
+      "sha256": "3039f6f6a30b7b01c1131ba264f6b1e88d9ab4a170353979e5641c619a45820a",
+      "source_path": "reports/hrv_core_report.md"
+    }
+  ],
+  "checksum_file": "artifact_checksums.csv",
+  "dataset": {
+    "manifest": "data_manifest.csv",
+    "name": "Fantasia Database",
+    "version": "1.0.0"
+  },
+  "generated_at_utc": "2026-06-22T10:51:27+00:00",
+  "git": {
+    "branch": "main",
+    "commit": "60c662a239d85c35331b584cb7884caa81fac802",
+    "dirty": false
+  },
+  "project_version": "0.1.0",
+  "raw_data_policy": "Raw waveform files under data/raw are intentionally excluded.",
+  "release_name": "hrv-core-v0.1.0"
+}

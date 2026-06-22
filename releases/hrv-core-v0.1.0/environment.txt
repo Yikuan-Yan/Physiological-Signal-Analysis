@@ -1,0 +1,13 @@
+generated_at_utc=2026-06-22T10:51:27+00:00
+python=3.13.14
+platform=Windows-11-10.0.26200-SP0
+executable=C:\Users\Yikuan Yan\Github\Physiological Signal Analysis\.venv\Scripts\python.exe
+physio-signal-lab=0.1.0
+matplotlib=3.11.0
+neurokit2=0.2.13
+numpy=2.5.0
+pandas=2.3.3
+pyyaml=6.0.3
+scipy=1.18.0
+wfdb=4.3.1
+pytest=9.1.1
