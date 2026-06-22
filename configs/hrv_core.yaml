@@ -1,0 +1,31 @@
+dataset:
+  name: Fantasia Database
+  version: 1.0.0
+  manifest: data_manifest.csv
+  raw_dir: data/raw/fantasia/1.0.0
+
+records:
+  pilot:
+    - f1y01
+    - f1o01
+  mode: all
+
+ecg:
+  sampling_rate_source: header
+  channel_name: ECG
+  detector:
+    name: neurokit
+    clean_method: neurokit
+    peak_method: neurokit
+
+benchmark:
+  tolerances_ms:
+    - 50
+    - 100
+  failure_plot_count: 5
+  failure_window_seconds: 30
+
+outputs:
+  inventory_csv: results/data_quality/fantasia_inventory.csv
+  peak_benchmark_csv: results/peak_benchmark/peak_benchmark_by_record.csv
+  failure_plot_dir: figures/peak_failures
