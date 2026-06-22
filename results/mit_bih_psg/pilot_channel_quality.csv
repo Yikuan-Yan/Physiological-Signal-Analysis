@@ -1,0 +1,13 @@
+record_id,channel_index,channel_name,unit,sampling_rate_hz,record_duration_hours,sampled_seconds,finite_fraction_pct,standard_deviation,is_respiration_channel,is_spo2_channel,has_dynamic_signal
+slp01a,0,ECG,mV,250.0,2.0,60.0,100.0,0.13163224654527308,False,False,True
+slp01a,1,BP,mmHg,250.0,2.0,60.0,100.0,18.644848748438154,False,False,True
+slp01a,2,EEG (C4-A1),mV,250.0,2.0,60.0,100.0,0.040131027297200694,False,False,True
+slp01a,3,Resp (sum),l,250.0,2.0,60.0,100.0,0.40629615102903877,True,False,True
+slp02a,0,ECG,mV,250.0,3.0,60.0,100.0,0.15406377807019475,False,False,True
+slp02a,1,BP,mmHg,250.0,3.0,60.0,100.0,18.983253141546726,False,False,True
+slp02a,2,EEG (O2-A1),mV,250.0,3.0,60.0,100.0,0.011112758146213387,False,False,True
+slp02a,3,Resp (nasal),l,250.0,3.0,60.0,100.0,0.29923536988475846,True,False,True
+slp03,0,ECG,mV,250.0,6.0,60.0,100.0,0.24157129003334263,False,False,True
+slp03,1,BP,mmHg,250.0,6.0,60.0,100.0,28.364010206222613,False,False,True
+slp03,2,EEG (C3-O1),mV,250.0,6.0,60.0,100.0,0.013065884240632908,False,False,True
+slp03,3,Resp (nasal),l,250.0,6.0,60.0,100.0,0.22259229203385011,True,False,True

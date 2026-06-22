@@ -15,7 +15,9 @@ Completed:
 - Hypnogram timeline plots and sleep architecture plots.
 - Reference-vs-YASA discrepancy tables.
 - Clinical question ranking for duration, continuity, architecture, respiratory-evidence need, and lights-out context.
-- Download and checksum validation through `SC4071`.
+- Download and checksum validation through `SC4101`.
+- Eight-record YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4071`.
+- MIT-BIH PSG respiratory pilot implementation for apnea/hypopnea annotation burden.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -31,13 +33,30 @@ Validated Sleep-EDF records:
 - `SC4051`
 - `SC4061`
 - `SC4071`
+- `SC4081`
+- `SC4091`
+- `SC4101`
 
 Current validation summary:
 
-- EDF files validated: 16
-- bytes: 400,379,978
+- EDF files validated: 22
+- bytes: 550,840,646
 - missing files: 0
 - checksum mismatches: 0
+
+## Current Eight-Record Results
+
+Eight-record outputs:
+
+- `reports/sleep_edf_eight_record_yasa_profile.md`
+- `reports/sleep_edf_eight_record_benchmark.md`
+- `reports/sleep_edf_eight_record_clinical_education.md`
+- `results/sleep_edf/eight_record_yasa_runtime_profile.csv`
+- `results/sleep_edf/eight_record_yasa_metrics.csv`
+- `results/sleep_edf/eight_record_sleep_quality_metrics.csv`
+- `results/sleep_edf/eight_record_clinical_indicators.csv`
+- `figures/sleep_edf/eight_record_hypnogram_timeline.png`
+- `figures/sleep_edf/eight_record_sleep_architecture.png`
 
 ## Current Five-Record Results
 
@@ -87,35 +106,33 @@ Sleep-EDF cannot directly support:
 Continue small batches:
 
 ```bash
-uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf.yaml --records SC4081,SC4091,SC4101
-uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4081,SC4091,SC4101
-
 uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf.yaml --records SC4111,SC4121,SC4131
 uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4111,SC4121,SC4131
 ```
 
-### Track B: Eight-Record Clinical Report
+### Track B: Eleven-Record Clinical Report
 
-The next expanded report should use the already validated `SC4001` through `SC4071`.
+The next expanded report should use the now validated records through `SC4101`.
 
 ```bash
-uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071 --full-night --timeout-seconds 180 --output-prefix eight_record
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071 --output-prefix eight_record --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071 --output-prefix eight_record --include-yasa
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --full-night --timeout-seconds 180 --output-prefix eleven_record
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
 ```
 
 ### Track C: Respiratory PSG Dataset
 
-Use `reports/respiratory_dataset_candidates.md` to start disease-specific respiratory reasoning. Recommended first target: MIT-BIH Polysomnographic Database.
+MIT-BIH PSG is now the active disease-specific respiratory reasoning track.
 
 Implementation outline:
 
-1. Add `configs/mit_bih_psg.yaml`.
-2. Download a small MIT-BIH PSG pilot subset.
-3. Parse sleep/apnea annotations.
-4. Compute apnea annotation burden per sleep hour.
-5. Add respiration/SpO2 quality checks when channels are available.
-6. Extend the clinical-learning report with respiratory-event evidence.
+1. Done: add `configs/mit_bih_psg.yaml`.
+2. Done: download a small MIT-BIH PSG pilot subset.
+3. Done: parse sleep/apnea annotations.
+4. Done: compute apnea annotation burden per sleep hour.
+5. Done: add respiration/SpO2 quality checks.
+6. Done: extend the clinical-learning report with respiratory-event evidence.
+7. Next: add SO2-channel MIT-BIH records for oxygen desaturation burden.
 
 ## Evidence Boundary
 

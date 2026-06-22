@@ -19,15 +19,30 @@ The next disease-focused phase should add a dataset with respiratory signals, ox
 
 Start with the MIT-BIH Polysomnographic Database because it is small enough for fast iteration and includes both sleep/apnea annotations and respiration signals. It can bridge from the current Sleep-EDF sleep-stage pipeline to respiratory-event reasoning without immediately taking on SHHS-scale data management.
 
+## Current Implementation Status
+
+Implemented in this phase:
+
+- Added `configs/mit_bih_psg.yaml`.
+- Added MIT-BIH PSG download and validation commands.
+- Added a pilot subset with `slp01a`, `slp02a`, and `slp03`.
+- Added `.st` sleep/apnea annotation parsing.
+- Added AHI-style annotation burden per sleep hour.
+- Added respiration and SpO2 channel availability/quality checks.
+- Added `reports/mit_bih_psg_respiratory_pilot.md` for respiratory-event clinical learning.
+
+Remaining:
+
+- Add records with SO2 channels for oxygen desaturation burden.
+- Add event-level waveform review around apnea/hypopnea annotations.
+- Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
+
 ## What To Implement Next
 
-1. Add `configs/mit_bih_psg.yaml`.
-2. Add a manifest for a small pilot subset such as `slp01`, `slp02`, and `slp03`.
-3. Download WFDB `.hea`, `.dat`, `.st`, and `.ecg` files.
-4. Parse `.st` sleep/apnea annotations.
-5. Compute respiratory-event burden per hour of sleep when annotation semantics are confirmed.
-6. Add oxygen/respiration quality checks before interpreting desaturation or apnea burden.
-7. Extend the clinical learning report with respiratory sections:
+1. Add records with SO2 channels, for example `slp59`, `slp60`, `slp61`, `slp66`, or `slp67x`.
+2. Compute oxygen desaturation metrics when oximetry is available.
+3. Add event-level waveform windows around apnea/hypopnea annotations.
+4. Extend the clinical learning report with respiratory sections:
    - apnea annotation burden;
    - oxygen desaturation burden, when SpO2 exists;
    - respiratory-event evidence sufficiency;

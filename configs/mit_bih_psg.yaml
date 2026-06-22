@@ -1,0 +1,49 @@
+dataset:
+  name: MIT-BIH Polysomnographic Database
+  version: 1.0.0
+  doi: https://doi.org/10.13026/C23K5S
+  license: Open Data Commons Attribution License v1.0
+  source_base_url: https://physionet.org/files/slpdb/1.0.0
+  raw_dir: data/raw/mit-bih-psg/1.0.0
+  manifest: data_manifest_mit_bih_psg.csv
+  access_date: 2026-06-23
+
+selection:
+  pilot_records:
+    - slp01a
+    - slp02a
+    - slp03
+  files:
+    - hea
+    - dat
+    - st
+    - ecg
+  source_reported_ahi:
+    slp01a: 17.0
+    slp02a: 34.0
+    slp03: 43.0
+
+annotations:
+  epoch_seconds: 30
+  sleep_stage_mapping:
+    W: WAKE
+    "1": N1
+    "2": N2
+    "3": N3
+    "4": N3
+    R: REM
+  excluded_stage_tokens:
+    - MT
+
+quality:
+  sample_seconds: 60
+
+outputs:
+  manifest_csv: data_manifest_mit_bih_psg.csv
+  download_summary_csv: results/mit_bih_psg/download_summary.csv
+  validation_csv: results/mit_bih_psg/validation.csv
+  annotation_epochs_csv: results/mit_bih_psg/pilot_annotation_epochs.csv
+  respiratory_metrics_csv: results/mit_bih_psg/pilot_respiratory_metrics.csv
+  channel_quality_csv: results/mit_bih_psg/pilot_channel_quality.csv
+  clinical_indicators_csv: results/mit_bih_psg/pilot_clinical_indicators.csv
+  report_md: reports/mit_bih_psg_respiratory_pilot.md

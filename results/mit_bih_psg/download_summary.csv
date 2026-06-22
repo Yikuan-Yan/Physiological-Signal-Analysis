@@ -1,0 +1,13 @@
+record_id,file_extension,source_url,local_path,status,bytes,sha256
+slp01a,hea,https://physionet.org/files/slpdb/1.0.0/slp01a.hea,data/raw/mit-bih-psg/1.0.0/slp01a.hea,downloaded,281,05bfae85818ffd2fd9586daad74c17ec47cc94d47794c11fb9d3e451a9d7c0da
+slp01a,dat,https://physionet.org/files/slpdb/1.0.0/slp01a.dat,data/raw/mit-bih-psg/1.0.0/slp01a.dat,downloaded,10800000,80f04f98de84c6e342ffda59b597c70d956501f1a827cf2fea04d112c8cd7257
+slp01a,st,https://physionet.org/files/slpdb/1.0.0/slp01a.st,data/raw/mit-bih-psg/1.0.0/slp01a.st,downloaded,3438,86bdb652919e0fe21c551fd39ed6d14fc0d28b665622dc6f0796044d368b6f04
+slp01a,ecg,https://physionet.org/files/slpdb/1.0.0/slp01a.ecg,data/raw/mit-bih-psg/1.0.0/slp01a.ecg,downloaded,15614,8382c53a6c6fc5cd909b553235a1b0ed63492bfe834a68d184b611af38bf1fb2
+slp02a,hea,https://physionet.org/files/slpdb/1.0.0/slp02a.hea,data/raw/mit-bih-psg/1.0.0/slp02a.hea,downloaded,275,7f7254130285b52c602f5b80f682a15a9d939faf666778f8165054db37f40570
+slp02a,dat,https://physionet.org/files/slpdb/1.0.0/slp02a.dat,data/raw/mit-bih-psg/1.0.0/slp02a.dat,downloaded,16200000,3be9ecc08cef24b714374e51324b5b53ef05d8b4ab1dfc25b007b38d0bcbd00b
+slp02a,st,https://physionet.org/files/slpdb/1.0.0/slp02a.st,data/raw/mit-bih-psg/1.0.0/slp02a.st,downloaded,4556,16be6146a870b536a1f4c73aa000ca09c94e7cc00b8378625a1154313c8fd713
+slp02a,ecg,https://physionet.org/files/slpdb/1.0.0/slp02a.ecg,data/raw/mit-bih-psg/1.0.0/slp02a.ecg,downloaded,32292,bff9f0b5595d442146931f02a25a9c62d77526b157fd9b5421d3e19891aa8c7c
+slp03,hea,https://physionet.org/files/slpdb/1.0.0/slp03.hea,data/raw/mit-bih-psg/1.0.0/slp03.hea,downloaded,277,9e396d763cf3fd2412f5bcbc234f6b18957df65c4a7734e8c7a587ef97a2ab24
+slp03,dat,https://physionet.org/files/slpdb/1.0.0/slp03.dat,data/raw/mit-bih-psg/1.0.0/slp03.dat,downloaded,32400000,f6af00371d59af7c9ea2d48eb3ad75f71269b6c10caaa20daecbd75c7fb05d4d
+slp03,st,https://physionet.org/files/slpdb/1.0.0/slp03.st,data/raw/mit-bih-psg/1.0.0/slp03.st,downloaded,9198,1914ba40c87bb3030f22a95eec2017140033cb1889cd585ee4f814285ab04a6d
+slp03,ecg,https://physionet.org/files/slpdb/1.0.0/slp03.ecg,data/raw/mit-bih-psg/1.0.0/slp03.ecg,downloaded,49848,f13b87ecaf124c880171f109be79eca2f9bf7917c55738c391fe569448d21cf3

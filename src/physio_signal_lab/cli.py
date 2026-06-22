@@ -19,6 +19,12 @@ from physio_signal_lab.features.uncertainty import (
     record_summary,
 )
 from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manifest
+from physio_signal_lab.io.mit_bih_psg import (
+    download_mit_bih_psg_selection,
+    update_mit_bih_psg_manifest_checksums,
+    validate_mit_bih_psg_manifest,
+    write_mit_bih_psg_manifest,
+)
 from physio_signal_lab.io.sleep_edf import (
     download_sleep_edf_selection,
     update_manifest_checksums,
@@ -27,6 +33,7 @@ from physio_signal_lab.io.sleep_edf import (
 from physio_signal_lab.manifest import validate_manifest
 from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
+from physio_signal_lab.mit_bih_psg import run_mit_bih_psg_respiratory_pilot
 from physio_signal_lab.sleep_edf_benchmark import run_sleep_edf_pilot_benchmark
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
 from physio_signal_lab.sleep_quality import run_sleep_edf_clinical_education
@@ -353,6 +360,58 @@ def sleep_edf_clinical_education(args: argparse.Namespace) -> int:
     return 0
 
 
+def download_mit_bih_psg(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    manifest_out = write_mit_bih_psg_manifest(config, records=records)
+    summary = download_mit_bih_psg_selection(
+        config,
+        records=records,
+        overwrite=args.overwrite,
+    )
+    summary_out = _ensure_parent(config["outputs"]["download_summary_csv"])
+    summary.to_csv(summary_out, index=False)
+    update_mit_bih_psg_manifest_checksums(manifest_out, records=records)
+    print(f"wrote {summary_out} rows={len(summary)}")
+    print(f"updated {manifest_out}")
+    print(f"bytes={int(summary['bytes'].sum())}")
+    print(f"downloaded={(summary['status'].str.startswith('downloaded')).sum()}")
+    print(f"skipped_existing={(summary['status'] == 'skipped_existing').sum()}")
+    return 0
+
+
+def validate_mit_bih_psg(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    validation = validate_mit_bih_psg_manifest(
+        config["outputs"]["manifest_csv"],
+        records=records,
+    )
+    validation_out = _ensure_parent(config["outputs"]["validation_csv"])
+    validation.to_csv(validation_out, index=False)
+    missing = int((~validation["exists"]).sum())
+    checksum_mismatches = int((~validation["checksum_ok"]).sum())
+    incomplete_records = int((~validation["required_file_set_complete"]).sum())
+    print(f"wrote {validation_out} rows={len(validation)}")
+    print(f"missing_files={missing}")
+    print(f"checksum_mismatches={checksum_mismatches}")
+    print(f"incomplete_required_file_rows={incomplete_records}")
+    print(f"bytes={int(validation['bytes'].sum())}")
+    return 0 if missing == 0 and checksum_mismatches == 0 and incomplete_records == 0 else 1
+
+
+def mit_bih_psg_respiratory_pilot(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    outputs = run_mit_bih_psg_respiratory_pilot(config, records=records)
+    print(f"wrote {outputs.annotation_epochs_csv}")
+    print(f"wrote {outputs.respiratory_metrics_csv}")
+    print(f"wrote {outputs.channel_quality_csv}")
+    print(f"wrote {outputs.clinical_indicators_csv}")
+    print(f"wrote {outputs.report_md}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -475,6 +534,22 @@ def build_parser() -> argparse.ArgumentParser:
     clinical_parser.add_argument("--output-prefix", default="pilot")
     clinical_parser.add_argument("--include-yasa", action="store_true")
     clinical_parser.set_defaults(func=sleep_edf_clinical_education)
+
+    mit_download_parser = subparsers.add_parser("download-mit-bih-psg")
+    mit_download_parser.add_argument("--config", default="configs/mit_bih_psg.yaml")
+    mit_download_parser.add_argument("--records", default=None)
+    mit_download_parser.add_argument("--overwrite", action="store_true")
+    mit_download_parser.set_defaults(func=download_mit_bih_psg)
+
+    mit_validate_parser = subparsers.add_parser("validate-mit-bih-psg")
+    mit_validate_parser.add_argument("--config", default="configs/mit_bih_psg.yaml")
+    mit_validate_parser.add_argument("--records", default=None)
+    mit_validate_parser.set_defaults(func=validate_mit_bih_psg)
+
+    mit_pilot_parser = subparsers.add_parser("run-mit-bih-psg-respiratory-pilot")
+    mit_pilot_parser.add_argument("--config", default="configs/mit_bih_psg.yaml")
+    mit_pilot_parser.add_argument("--records", default=None)
+    mit_pilot_parser.set_defaults(func=mit_bih_psg_respiratory_pilot)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")
