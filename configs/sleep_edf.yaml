@@ -69,6 +69,9 @@ channels:
     preprocessing: yasa_sleepstaging_no_prefilter_or_zscore
   limitation: Sleep-EDF Fpz-Cz/Pz-Oz are not YASA's preferred central derivations.
 
+yasa:
+  worker_timeout_seconds: 300
+
 outputs:
   selection_csv: results/sleep_edf/sleep_edf_selection.csv
   manifest_csv: data_manifest_sleep_edf.csv
@@ -80,5 +83,7 @@ outputs:
   yasa_predictions_csv: results/sleep_edf/pilot_yasa_predictions.csv
   yasa_probabilities_csv: results/sleep_edf/pilot_yasa_probabilities.csv
   yasa_metrics_csv: results/sleep_edf/pilot_yasa_metrics.csv
+  yasa_profile_csv: results/sleep_edf/yasa_runtime_profile.csv
   preflight_report_md: reports/sleep_edf_preflight.md
   pilot_benchmark_report_md: reports/sleep_edf_pilot_benchmark.md
+  yasa_profile_report_md: reports/sleep_edf_yasa_profile.md

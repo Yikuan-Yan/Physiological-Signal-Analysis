@@ -17,6 +17,7 @@ SLEEP_STAGE_DESCRIPTION_RE = re.compile(r"^Sleep stage (?P<label>[W1234RM?])$")
 STAGE_ORDER = ("WAKE", "N1", "N2", "N3", "REM")
 YASA_TO_STAGE = {
     "W": "WAKE",
+    "WAKE": "WAKE",
     "N1": "N1",
     "N2": "N2",
     "N3": "N3",
@@ -152,24 +153,31 @@ def run_yasa_predictions(
             "Use Python 3.12 with `uv sync --python 3.12 --extra sleep --extra dev`."
         ) from exc
 
-    raw = mne.io.read_raw_edf(paths.psg_path, preload=False, verbose="ERROR")
+    raw = mne.io.read_raw_edf(paths.psg_path, preload=True, verbose="ERROR")
     staging = yasa.SleepStaging(
         raw,
         eeg_name=eeg_name,
         eog_name=eog_name,
         emg_name=emg_name,
     )
-    predicted_raw = list(staging.predict())
+    predicted = staging.predict()
+    if hasattr(predicted, "hypno"):
+        predicted_raw = predicted.hypno.astype(str).tolist()
+    else:
+        predicted_raw = [str(stage) for stage in predicted]
     predictions = pd.DataFrame(
         {
             "record_id": paths.record_id,
             "epoch_index": np.arange(len(predicted_raw), dtype=int),
-            "yasa_stage_raw": [str(stage) for stage in predicted_raw],
-            "predicted_stage": [map_yasa_stage(str(stage)) for stage in predicted_raw],
+            "yasa_stage_raw": predicted_raw,
+            "predicted_stage": [map_yasa_stage(stage) for stage in predicted_raw],
         }
     )
 
-    probability = staging.predict_proba()
+    if hasattr(predicted, "proba") and predicted.proba is not None:
+        probability = predicted.proba
+    else:
+        probability = staging.predict_proba()
     probability = probability.rename(
         columns={column: f"prob_{map_yasa_stage(str(column)).lower()}" for column in probability.columns}
     )

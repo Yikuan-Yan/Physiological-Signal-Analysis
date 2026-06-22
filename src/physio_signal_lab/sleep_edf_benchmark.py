@@ -12,11 +12,11 @@ from physio_signal_lab.evaluation.sleep_staging import (
     majority_stage_predictions,
     paths_from_selection,
     read_sleep_edf_epoch_labels,
-    run_yasa_predictions,
     sleep_stage_metrics,
     stage_summary,
 )
 from physio_signal_lab.io.sleep_edf import validate_sleep_edf_manifest
+from physio_signal_lab.yasa_profile import run_yasa_worker_subprocess
 
 
 @dataclass(frozen=True)
@@ -103,12 +103,27 @@ def build_sleep_edf_pilot_report(
         yasa_lines = [
             (
                 "YASA staging was not requested in this run. Use `--include-yasa` in a "
-                "Python 3.12 sleep-extra environment to generate YASA predictions. In the "
-                "current local run, full-night YASA execution is still runtime-gated; see "
-                "`reports/sleep_edf_yasa_runtime_gate.md`."
+                "Python 3.12 sleep-extra environment to generate YASA predictions. Use "
+                "`profile-yasa-runtime` first when changing records, channels, or timeout budgets."
             ),
             "",
         ]
+
+    if include_yasa and yasa_metrics is not None:
+        next_step = (
+            "Use the completed runtime profile and pilot YASA benchmark as the gate for "
+            "downloading and evaluating the next frozen Sleep-EDF records."
+        )
+    elif include_yasa:
+        next_step = (
+            "Inspect the YASA worker failure, rerun `profile-yasa-runtime`, then retry "
+            "`--include-yasa` only after the profile completes within the configured timeout."
+        )
+    else:
+        next_step = (
+            "Run `profile-yasa-runtime` and then `--include-yasa` before expanding beyond "
+            "the pilot records."
+        )
 
     stage_rows = []
     for _, row in stage_summary_df.iterrows():
@@ -188,10 +203,7 @@ def build_sleep_edf_pilot_report(
         "",
         "## Next Step",
         "",
-        (
-            "Resolve the local YASA runtime gate, then run YASA on the pilot records before "
-            "downloading and evaluating the remaining frozen benchmark records."
-        ),
+        next_step,
         "",
     ]
     return "\n".join(lines)
@@ -236,15 +248,32 @@ def run_sleep_edf_pilot_benchmark(
         prediction_parts = []
         probability_parts = []
         channel_config = config["channels"]["staging"]
+        timeout_seconds = float(config.get("yasa", {}).get("worker_timeout_seconds", 300.0))
+        output_dir = Path(outputs["yasa_predictions_csv"]).parent
+        output_dir.mkdir(parents=True, exist_ok=True)
         for path_set in paths:
-            model_predictions, probability = run_yasa_predictions(
-                path_set,
+            temp_predictions = output_dir / f".{path_set.record_id}_yasa_predictions.tmp.csv"
+            temp_probabilities = output_dir / f".{path_set.record_id}_yasa_probabilities.tmp.csv"
+            worker_result = run_yasa_worker_subprocess(
+                record_id=path_set.record_id,
+                psg_path=path_set.psg_path,
                 eeg_name=channel_config["eeg_name"],
                 eog_name=channel_config.get("eog_name"),
                 emg_name=channel_config.get("emg_name"),
+                crop_seconds=None,
+                timeout_seconds=timeout_seconds,
+                predictions_out=temp_predictions,
+                probabilities_out=temp_probabilities,
             )
-            prediction_parts.append(model_predictions)
-            probability_parts.append(probability)
+            if worker_result.get("status") != "completed":
+                yasa_note = str(worker_result.get("error", "YASA worker failed"))
+                raise RuntimeError(
+                    f"YASA worker failed for {path_set.record_id}: {yasa_note}"
+                )
+            prediction_parts.append(pd.read_csv(temp_predictions))
+            probability_parts.append(pd.read_csv(temp_probabilities))
+            temp_predictions.unlink(missing_ok=True)
+            temp_probabilities.unlink(missing_ok=True)
         raw_yasa_predictions = pd.concat(prediction_parts, ignore_index=True)
         yasa_probabilities = pd.concat(probability_parts, ignore_index=True)
         aligned_yasa = align_model_predictions(

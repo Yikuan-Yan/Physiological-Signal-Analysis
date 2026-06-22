@@ -26,6 +26,7 @@ from physio_signal_lab.evaluation.sleep_staging import (
     sleep_stage_metrics,
 )
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
+from physio_signal_lab.yasa_profile import build_yasa_profile_report
 
 
 FIXTURE_FILENAMES = [
@@ -193,7 +194,8 @@ def test_majority_baseline_metrics_are_record_and_all_level():
 
 
 def test_yasa_stage_mapping_and_alignment():
-    assert [map_yasa_stage(stage) for stage in ["W", "N1", "N2", "N3", "R"]] == [
+    assert [map_yasa_stage(stage) for stage in ["W", "WAKE", "N1", "N2", "N3", "R"]] == [
+        "WAKE",
         "WAKE",
         "N1",
         "N2",
@@ -223,6 +225,42 @@ def test_yasa_stage_mapping_and_alignment():
 def test_yasa_stage_mapping_rejects_unknown_label():
     with pytest.raises(ValueError):
         map_yasa_stage("UNKNOWN")
+
+
+def test_yasa_profile_report_summarizes_runtime_gate_rows():
+    profile = pd.DataFrame(
+        [
+            {
+                "record_id": "SC4001",
+                "status": "completed",
+                "crop_seconds": 120,
+                "timeout_seconds": 60,
+                "wall_seconds": 12.5,
+                "predicted_epochs": 4,
+                "total_seconds": 12.0,
+            },
+            {
+                "record_id": "SC4011",
+                "status": "timeout",
+                "crop_seconds": 120,
+                "timeout_seconds": 60,
+                "wall_seconds": 60.1,
+            },
+            {
+                "record_id": "SC4021",
+                "status": "error",
+                "crop_seconds": 120,
+                "timeout_seconds": 60,
+                "wall_seconds": 1.0,
+            },
+        ]
+    )
+
+    report = build_yasa_profile_report(profile)
+    assert "completed: 1" in report
+    assert "timed out: 1" in report
+    assert "errored: 1" in report
+    assert "runtime gate, not a sleep-stage benchmark" in report
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):

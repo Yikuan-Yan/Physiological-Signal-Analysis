@@ -2,53 +2,48 @@
 
 ## Status
 
-YASA dependency resolution is fixed for a Python 3.12 sleep-extra environment, but local YASA execution has not yet completed within practical runtime limits. The committed benchmark outputs therefore remain baseline-only.
+Passed for the current two-record pilot on Python 3.12.13 with YASA 0.7.0, MNE 1.12.1, and scikit-learn 1.9.0.
 
-This report does not evaluate sleep quality, diagnose sleep disorders, or make YASA performance claims.
-
-## Dependency Result
-
-The following command completed successfully:
-
-```bash
-uv run --python 3.12 --isolated --with "yasa>=0.7.0" --with mne --with scikit-learn python -c "import sys, yasa, mne, sklearn; print(sys.version.split()[0]); print('yasa', yasa.__version__); print('mne', mne.__version__); print('sklearn', sklearn.__version__)"
-```
-
-Observed versions:
-
-- Python: 3.12.13
-- YASA: 0.7.0
-- MNE: 1.12.1
-- scikit-learn: 1.9.0
-
-The project `sleep` extra now includes `yasa>=0.7.0` only for Python versions below 3.13. This prevents the Python 3.13 core environment from resolving to an incompatible YASA dependency set.
+This report does not evaluate sleep quality, diagnose sleep disorders, or make clinical claims.
 
 ## Runtime Result
 
-Two local YASA execution attempts were stopped because they exceeded the runtime budget:
+The bounded child-process profile completed for both pilot records:
 
-| Attempt | Scope | Limit | Result |
-| --- | --- | --- | --- |
-| full pilot benchmark | `SC4001`, `SC4011`, full nights | 15 min | timed out |
-| smoke crop | `SC4001`, first 10 min | 5 min | timed out |
+| record | scope | limit | wall seconds | epochs | result |
+| --- | --- | --- | --- | --- | --- |
+| SC4001 | full night | 180 s | 58.617 | 2650 | completed |
+| SC4011 | full night | 180 s | 55.327 | 2802 | completed |
 
-No YASA prediction, probability, or metric CSV was committed from these attempts.
+Detailed timings are stored in `results/sleep_edf/yasa_runtime_profile.csv`, with the generated summary in `reports/sleep_edf_yasa_profile.md`.
 
-## Protected Pipeline
+## Benchmark Result
 
-The default command remains baseline-only and completes:
+The opt-in YASA benchmark completed and wrote aligned predictions, probabilities, and metrics for all 5,452 included pilot epochs:
 
-```bash
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011
-```
+- `results/sleep_edf/pilot_yasa_predictions.csv`
+- `results/sleep_edf/pilot_yasa_probabilities.csv`
+- `results/sleep_edf/pilot_yasa_metrics.csv`
+- `reports/sleep_edf_pilot_benchmark.md`
 
-YASA execution is explicit and opt-in:
+Pilot-level YASA metrics:
+
+| records | accuracy | balanced accuracy | macro-F1 | Cohen's kappa |
+| --- | --- | --- | --- | --- |
+| SC4001, SC4011 | 0.744 | 0.667 | 0.595 | 0.544 |
+
+## Compatibility Note
+
+YASA 0.7.0 emits a scikit-learn `InconsistentVersionWarning` because its bundled estimator was pickled with scikit-learn 0.24.2 and is being loaded with scikit-learn 1.9.0. Treat this as a reproducibility caveat for downstream comparisons until the model/runtime versions are pinned or independently cross-checked.
+
+## Reproduce
 
 ```bash
 uv sync --python 3.12 --extra sleep --extra dev
-uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011 --include-yasa
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011 --full-night --timeout-seconds 180
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011 --include-yasa
 ```
 
 ## Next Decision
 
-Before using YASA as the model benchmark, resolve the runtime gate by testing a clean Python 3.12 environment, checking whether YASA feature extraction is blocked by local acceleration dependencies, and running a bounded profiling pass. Only commit YASA metrics after `--include-yasa` completes end-to-end and writes aligned predictions for all included pilot epochs.
+Download and validate the next frozen Sleep-EDF records while keeping YASA behind the child-process timeout gate. New records should pass checksum validation and a bounded YASA profile before their YASA metrics are committed.

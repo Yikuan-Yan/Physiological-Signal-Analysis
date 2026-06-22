@@ -2,83 +2,56 @@
 
 ## Current State
 
-The Fantasia ECG/HRV core is complete and frozen at `hrv-core-v0.1.0`. Sleep-EDF has passed protocol preflight, pilot data access, epoch-label alignment, and majority-stage baseline benchmarking for `SC4001` and `SC4011`.
+The Fantasia ECG/HRV core is complete and frozen at `hrv-core-v0.1.0`. Sleep-EDF has passed protocol preflight, pilot data access, epoch-label alignment, majority-stage baseline benchmarking, and opt-in YASA pilot benchmarking for `SC4001` and `SC4011`.
 
-YASA is available in a Python 3.12 sleep-extra environment, but local YASA execution is still runtime-gated. Full pilot YASA and a 10 min smoke crop both timed out, so no YASA metrics are treated as valid yet.
+The YASA runtime gate is now passed for the two-record pilot in a Python 3.12 sleep-extra environment. The implementation runs YASA in a child process with a hard timeout, writes a runtime profile, and commits YASA metrics only after aligned predictions are produced for all included pilot epochs.
 
-## Goal
-
-Move from pilot baseline to a reproducible 20-participant Sleep-EDF benchmark with:
-
-- frozen Sleep Cassette participant selection;
-- checked PSG/Hypnogram files and SHA256 manifest entries;
-- majority-stage baseline;
-- YASA staging, if the runtime gate is resolved;
-- per-subject metrics and participant-level uncertainty;
-- explicit limitations around R&K labels, channel mismatch, and scorer uncertainty.
+The next frozen download batch is also complete: `SC4021`, `SC4031`, and `SC4041` were downloaded and checksum-validated. Raw EDF files remain ignored under `data/raw/`.
 
 No sleep-quality, diagnostic, clinical, or event-detector accuracy claims are in scope.
 
-## Parallel Workstreams
+## Completed In This Stage
 
-### Track A: YASA Runtime Profiling Gate
+- Added `profile-yasa-runtime` for bounded YASA profiling.
+- Added a YASA worker subprocess to isolate imports, EDF read, `SleepStaging`, prediction, probability extraction, and CSV writes.
+- Replaced in-process `--include-yasa` benchmark execution with the bounded worker path.
+- Added support for YASA 0.7 `Hypnogram` outputs and `WAKE` labels.
+- Generated pilot YASA outputs:
+  - `results/sleep_edf/pilot_yasa_predictions.csv`
+  - `results/sleep_edf/pilot_yasa_probabilities.csv`
+  - `results/sleep_edf/pilot_yasa_metrics.csv`
+  - `reports/sleep_edf_yasa_profile.md`
+  - `reports/sleep_edf_yasa_runtime_gate.md`
+- Downloaded and validated:
+  - `SC4021`
+  - `SC4031`
+  - `SC4041`
 
-Purpose: determine whether YASA can run locally in a bounded, reproducible way before any YASA metrics are committed.
+## Current Pilot Results
 
-Recommended steps:
+Pilot YASA metrics for `SC4001` and `SC4011`:
 
-1. Create/sync the Python 3.12 sleep environment:
+| records | epochs | accuracy | balanced accuracy | macro-F1 | Cohen's kappa |
+| --- | --- | --- | --- | --- | --- |
+| SC4001, SC4011 | 5452 | 0.744 | 0.667 | 0.595 | 0.544 |
 
-```bash
-uv sync --python 3.12 --extra sleep --extra dev
-```
+The majority-stage baseline remains the comparison floor:
 
-2. Add a profiling script or command that times these stages separately:
+| records | epochs | accuracy | balanced accuracy | macro-F1 | Cohen's kappa |
+| --- | --- | --- | --- | --- | --- |
+| SC4001, SC4011 | 5452 | 0.707 | 0.200 | 0.166 | 0.000 |
 
-- EDF read;
-- channel picking;
-- raw crop;
-- `yasa.SleepStaging(...)` construction;
-- feature extraction / `predict()`;
-- `predict_proba()`;
-- CSV write.
+## Compatibility Caveat
 
-3. Start with a very small crop, then increase only if each gate passes:
+YASA 0.7.0 emits a scikit-learn `InconsistentVersionWarning` because its bundled estimator was pickled with scikit-learn 0.24.2 and is currently loaded with scikit-learn 1.9.0. Treat YASA metrics as a local benchmark result with a reproducibility caveat until the model/runtime version pairing is pinned or cross-checked.
 
-- `SC4001`, first 2 min;
-- `SC4001`, first 10 min;
-- `SC4001`, first 30 min;
-- `SC4001`, full night;
-- `SC4001` + `SC4011`.
+## Next Workstreams
 
-4. Record elapsed time, peak memory if available, package versions, and whether output epoch counts match the aligned epoch table.
+### Track A: Expand Data Downloads
 
-Acceptance gate:
-
-- a bounded pilot YASA run completes end-to-end;
-- predictions cover all included pilot epochs;
-- probabilities align one row per predicted epoch;
-- no YASA metrics are committed unless the aligned outputs are complete.
-
-Fallback if blocked:
-
-- try a clean Python 3.12 environment outside the project `.venv`;
-- limit thread counts with environment variables such as `OMP_NUM_THREADS=1`;
-- test WSL/Linux if Windows execution remains stalled;
-- keep the baseline benchmark as the only committed model result until YASA completes.
-
-### Track B: Remaining Sleep-EDF Data Download
-
-Purpose: download and validate the remaining frozen Sleep Cassette records while Track A investigates runtime.
-
-This can run in parallel with Track A because it is mostly network and disk I/O, while YASA profiling is compute-bound. Avoid running large checksum updates at the exact same time as profiling if disk contention becomes visible.
-
-Recommended batches:
+Continue downloading the frozen Sleep Cassette benchmark records in small batches and validate each batch immediately:
 
 ```bash
-uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf.yaml --records SC4021,SC4031,SC4041
-uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4021,SC4031,SC4041
-
 uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf.yaml --records SC4051,SC4061,SC4071
 uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4051,SC4061,SC4071
 
@@ -97,54 +70,34 @@ uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep
 
 Acceptance gate:
 
-- all 40 selected EDF files exist locally;
-- `data_manifest_sleep_edf.csv` has SHA256 for all selected rows;
-- full validation reports `missing_files=0` and `checksum_mismatches=0`;
+- all selected EDF files exist locally;
+- `data_manifest_sleep_edf.csv` has SHA256 entries for all selected rows;
+- validation reports `missing_files=0` and `checksum_mismatches=0`;
 - raw EDF files remain ignored under `data/raw/`.
 
-### Track C: Full Benchmark Integration
+### Track B: Generalize Benchmark Outputs
 
-Purpose: merge Track A and Track B only after both are ready.
+The current command can run arbitrary record overrides, but the output names are still pilot-oriented. Before evaluating more records, split the benchmark outputs by scope so expanded runs do not overwrite the pilot artifacts.
 
-Baseline path:
+Recommended implementation:
 
-```bash
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011
-```
+- keep current `pilot_*` outputs for `SC4001,SC4011`;
+- add an expanded benchmark command or `--output-prefix`;
+- write per-scope labels, predictions, probabilities, metrics, and reports;
+- keep the YASA child-process timeout gate for every expanded run.
 
-Future full-selection path:
+### Track C: Expanded Baseline And YASA Evaluation
 
-```bash
-uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml
-uv run python -m physio_signal_lab.cli run-sleep-edf-benchmark --config configs/sleep_edf.yaml
-```
-
-YASA path, only after Track A passes:
+After output names are generalized, run an expanded benchmark in two layers:
 
 ```bash
-uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf-benchmark --config configs/sleep_edf.yaml --include-yasa
+uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --full-night --timeout-seconds 180
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --include-yasa
 ```
 
-Expected outputs:
-
-- per-epoch reference labels;
-- majority baseline predictions;
-- YASA predictions and probabilities, if available;
-- per-subject metrics;
-- overall metrics;
-- participant-level bootstrap confidence intervals;
-- failure/error-review candidate epochs.
-
-## Order Of Execution
-
-1. Start Track B downloads in small batches.
-2. While downloads run, implement Track A profiling instrumentation.
-3. Validate each downloaded batch immediately.
-4. Do not run full 20-subject YASA until Track A passes on pilot.
-5. Once all data validates, run full baseline benchmark.
-6. Once YASA is runtime-stable, add YASA metrics.
-7. Write the Sleep-EDF benchmark report.
-8. Freeze a new release/tag only after the benchmark report passes claim review.
+Use scope-specific output paths before committing those expanded metrics.
 
 ## Claim Review Checklist
 
@@ -161,9 +114,6 @@ Before publishing any Sleep-EDF report:
 
 ## Immediate Next Actions
 
-Recommended next action:
-
-1. Add a bounded YASA profiling command.
-2. In parallel, download the next batch: `SC4021,SC4031,SC4041`.
-3. Validate that batch and update `data_manifest_sleep_edf.csv`.
-4. Use the profiling result to decide whether YASA stays local, moves to WSL/Linux, or remains deferred.
+1. Commit the completed YASA runtime gate, pilot YASA outputs, and validated `SC4021`/`SC4031`/`SC4041` manifest updates.
+2. Add scope-specific benchmark output paths before running 5-record or 20-record metrics.
+3. Continue the next download batch: `SC4051,SC4061,SC4071`.

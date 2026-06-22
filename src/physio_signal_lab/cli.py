@@ -29,6 +29,7 @@ from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
 from physio_signal_lab.sleep_edf_benchmark import run_sleep_edf_pilot_benchmark
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
+from physio_signal_lab.yasa_profile import run_yasa_profile
 
 
 def _csv_record_override(value: str | None) -> list[str] | None:
@@ -309,6 +310,23 @@ def sleep_edf_pilot_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+def profile_yasa_runtime(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    if records is None:
+        records = [f"SC{int(subject):03d}1" for subject in config["selection"]["pilot_subjects"]]
+    crop_seconds = None if args.full_night else args.crop_seconds
+    outputs = run_yasa_profile(
+        config,
+        records=records,
+        crop_seconds=crop_seconds,
+        timeout_seconds=args.timeout_seconds,
+    )
+    print(f"wrote {outputs.profile_csv}")
+    print(f"wrote {outputs.report_md}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -414,6 +432,14 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_edf_benchmark_parser.add_argument("--records", default=None)
     sleep_edf_benchmark_parser.add_argument("--include-yasa", action="store_true")
     sleep_edf_benchmark_parser.set_defaults(func=sleep_edf_pilot_benchmark)
+
+    yasa_profile_parser = subparsers.add_parser("profile-yasa-runtime")
+    yasa_profile_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    yasa_profile_parser.add_argument("--records", default=None)
+    yasa_profile_parser.add_argument("--crop-seconds", type=float, default=120.0)
+    yasa_profile_parser.add_argument("--full-night", action="store_true")
+    yasa_profile_parser.add_argument("--timeout-seconds", type=float, default=120.0)
+    yasa_profile_parser.set_defaults(func=profile_yasa_runtime)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

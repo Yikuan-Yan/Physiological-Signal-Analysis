@@ -13,7 +13,12 @@ This report does not evaluate sleep quality, diagnose sleep disorders, or make e
 - scikit-learn status: available.
 - YASA status: available.
 
-YASA staging was not requested in this run. Use `--include-yasa` in a Python 3.12 sleep-extra environment to generate YASA predictions. In the current local run, full-night YASA execution is still runtime-gated; see `reports/sleep_edf_yasa_runtime_gate.md`.
+YASA staging was run with the frozen channel settings and aligned to the same included epoch table.
+
+- YASA overall accuracy: 0.744.
+- YASA balanced accuracy: 0.667.
+- YASA macro-F1: 0.595.
+- YASA Cohen's kappa: 0.544.
 
 
 ## Stage Distribution
@@ -30,6 +35,9 @@ YASA staging was not requested in this run. Use `--include-yasa` in a Python 3.1
 | majority_stage_baseline | SC4001 | 2650 | WAKE | 0.754 | 0.200 | 0.172 | 0.000 |
 | majority_stage_baseline | SC4011 | 2802 | WAKE | 0.662 | 0.200 | 0.159 | 0.000 |
 | majority_stage_baseline | all | 5452 | WAKE | 0.707 | 0.200 | 0.166 | 0.000 |
+| yasa_sleepstaging | SC4001 | 2650 | WAKE | 0.777 | 0.572 | 0.535 | 0.524 |
+| yasa_sleepstaging | SC4011 | 2802 | WAKE | 0.713 | 0.748 | 0.619 | 0.547 |
+| yasa_sleepstaging | all | 5452 | WAKE | 0.744 | 0.667 | 0.595 | 0.544 |
 
 - Overall included epochs: 5452.
 - Overall majority-stage accuracy: 0.707.
@@ -49,4 +57,4 @@ uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf
 
 ## Next Step
 
-Resolve the local YASA runtime gate, then run YASA on the pilot records before downloading and evaluating the remaining frozen benchmark records.
+Use the completed runtime profile and pilot YASA benchmark as the gate for downloading and evaluating the next frozen Sleep-EDF records.
