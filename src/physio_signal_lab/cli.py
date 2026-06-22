@@ -297,6 +297,7 @@ def sleep_edf_pilot_benchmark(args: argparse.Namespace) -> int:
         config,
         records=records,
         include_yasa=args.include_yasa,
+        output_prefix=args.output_prefix,
     )
     print(f"wrote {outputs.epoch_labels_csv}")
     print(f"wrote {outputs.baseline_metrics_csv}")
@@ -322,6 +323,7 @@ def profile_yasa_runtime(args: argparse.Namespace) -> int:
         records=records,
         crop_seconds=crop_seconds,
         timeout_seconds=args.timeout_seconds,
+        output_prefix=args.output_prefix,
     )
     print(f"wrote {outputs.profile_csv}")
     print(f"wrote {outputs.report_md}")
@@ -341,6 +343,11 @@ def sleep_edf_clinical_education(args: argparse.Namespace) -> int:
     )
     print(f"wrote {outputs.metrics_csv}")
     print(f"wrote {outputs.indicators_csv}")
+    if outputs.discrepancy_csv is not None:
+        print(f"wrote {outputs.discrepancy_csv}")
+    print(f"wrote {outputs.question_ranking_csv}")
+    print(f"wrote {outputs.hypnogram_plot_png}")
+    print(f"wrote {outputs.architecture_plot_png}")
     print(f"wrote {outputs.report_md}")
     print("wrote reports\\sleep_edf_clinical_learning_plan.md")
     return 0
@@ -449,6 +456,7 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_edf_benchmark_parser = subparsers.add_parser("run-sleep-edf-pilot-benchmark")
     sleep_edf_benchmark_parser.add_argument("--config", default="configs/sleep_edf.yaml")
     sleep_edf_benchmark_parser.add_argument("--records", default=None)
+    sleep_edf_benchmark_parser.add_argument("--output-prefix", default="pilot")
     sleep_edf_benchmark_parser.add_argument("--include-yasa", action="store_true")
     sleep_edf_benchmark_parser.set_defaults(func=sleep_edf_pilot_benchmark)
 
@@ -458,6 +466,7 @@ def build_parser() -> argparse.ArgumentParser:
     yasa_profile_parser.add_argument("--crop-seconds", type=float, default=120.0)
     yasa_profile_parser.add_argument("--full-night", action="store_true")
     yasa_profile_parser.add_argument("--timeout-seconds", type=float, default=120.0)
+    yasa_profile_parser.add_argument("--output-prefix", default=None)
     yasa_profile_parser.set_defaults(func=profile_yasa_runtime)
 
     clinical_parser = subparsers.add_parser("run-sleep-edf-clinical-education")

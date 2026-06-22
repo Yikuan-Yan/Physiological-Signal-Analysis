@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any
 import math
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import pandas as pd
 
 from physio_signal_lab.evaluation.sleep_staging import (
@@ -13,16 +17,33 @@ from physio_signal_lab.evaluation.sleep_staging import (
     read_sleep_edf_epoch_labels,
 )
 from physio_signal_lab.io.sleep_edf import validate_sleep_edf_manifest
+from physio_signal_lab.sleep_outputs import (
+    clean_output_prefix,
+    scoped_sleep_edf_output_path,
+    scoped_sleep_edf_report_path,
+)
 
 
 SLEEP_STAGES = ("N1", "N2", "N3", "REM")
 QUALITY_STAGES = ("WAKE", *SLEEP_STAGES)
+STAGE_TO_CODE = {"WAKE": 4, "REM": 3, "N1": 2, "N2": 1, "N3": 0}
+STAGE_COLORS = {
+    "WAKE": "#8a8f98",
+    "N1": "#6baed6",
+    "N2": "#3182bd",
+    "N3": "#08519c",
+    "REM": "#f28e2b",
+}
 
 
 @dataclass(frozen=True)
 class SleepClinicalEducationOutputs:
     metrics_csv: Path
     indicators_csv: Path
+    discrepancy_csv: Path | None
+    question_ranking_csv: Path
+    hypnogram_plot_png: Path
+    architecture_plot_png: Path
     report_md: Path
 
 
@@ -293,6 +314,204 @@ def build_clinical_indicators(metrics: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def build_yasa_discrepancy_table(
+    labels: pd.DataFrame,
+    yasa_predictions: pd.DataFrame,
+) -> pd.DataFrame:
+    aligned = align_model_predictions(
+        labels,
+        yasa_predictions,
+        model_name="yasa_sleepstaging",
+    )
+    rows: list[dict[str, Any]] = []
+    for record_id, group in aligned.groupby("record_id", sort=True):
+        total = len(group)
+        pair_counts = (
+            group.groupby(["mapped_stage", "predicted_stage"], sort=True)
+            .size()
+            .reset_index(name="epoch_count")
+        )
+        for _, pair in pair_counts.iterrows():
+            reference_stage = str(pair["mapped_stage"])
+            predicted_stage = str(pair["predicted_stage"])
+            count = int(pair["epoch_count"])
+            rows.append(
+                {
+                    "record_id": str(record_id),
+                    "reference_stage": reference_stage,
+                    "yasa_stage": predicted_stage,
+                    "pair_type": (
+                        "agreement" if reference_stage == predicted_stage else "discrepancy"
+                    ),
+                    "epoch_count": count,
+                    "pct_record_epochs": _safe_pct(count, total),
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def build_clinical_question_ranking(metrics: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for _, row in metrics.iterrows():
+        record_id = str(row["record_id"])
+        source = str(row["source"])
+        tst = float(row["total_sleep_time_minutes"])
+        period_efficiency = float(row["sleep_period_efficiency_pct"])
+        waso = float(row["waso_minutes"])
+        latency = float(row["sleep_onset_latency_proxy_minutes"])
+        rem_latency = float(row["rem_latency_minutes"])
+        awakenings = float(row["awakening_count"])
+        rem_pct = float(row["rem_pct_tst"])
+        n3_pct = float(row["n3_pct_tst"])
+
+        duration_score = max(0.0, (420.0 - tst) / 60.0)
+        continuity_score = max(0.0, (85.0 - period_efficiency) / 10.0) + max(
+            0.0,
+            (waso - 60.0) / 60.0,
+        )
+        latency_score = min(1.0, max(0.0, (latency - 30.0) / 60.0))
+        rem_score = 0.0
+        if math.isfinite(rem_latency):
+            rem_score += max(0.0, (60.0 - rem_latency) / 30.0)
+            rem_score += max(0.0, (rem_latency - 120.0) / 60.0)
+        architecture_score = rem_score + max(0.0, (10.0 - n3_pct) / 10.0) + max(
+            0.0,
+            (15.0 - rem_pct) / 10.0,
+        )
+        respiratory_evidence_score = max(0.0, continuity_score - 1.0) + max(
+            0.0,
+            (awakenings - 15.0) / 15.0,
+        )
+
+        candidates = [
+            {
+                "clinical_question": "Is sleep duration insufficient?",
+                "priority_score": duration_score,
+                "evidence": f"TST {tst:.1f} min.",
+                "next_data_needed": "Habitual sleep schedule, sleep diary, daytime symptoms.",
+            },
+            {
+                "clinical_question": "Is sleep continuity poor?",
+                "priority_score": continuity_score,
+                "evidence": f"Sleep-period efficiency {period_efficiency:.1f}%, WASO {waso:.1f} min.",
+                "next_data_needed": "Arousal scoring, symptoms, pain/medication review, repeated nights.",
+            },
+            {
+                "clinical_question": "Is lights-out context needed?",
+                "priority_score": latency_score,
+                "evidence": f"First sleep begins {latency:.1f} min after recording start.",
+                "next_data_needed": "Lights-out marker and patient-reported bedtime.",
+            },
+            {
+                "clinical_question": "Is REM or stage architecture unusual?",
+                "priority_score": architecture_score,
+                "evidence": f"REM latency {_fmt(rem_latency)} min, N3 {_fmt(n3_pct)}% TST, REM {_fmt(rem_pct)}% TST.",
+                "next_data_needed": "Medication, mood, sleep deprivation, repeated nights, MSLT if indicated.",
+            },
+            {
+                "clinical_question": "Is respiratory-event evidence needed?",
+                "priority_score": respiratory_evidence_score,
+                "evidence": f"Fragmentation proxy: {awakenings:.0f} awakenings, WASO {waso:.1f} min.",
+                "next_data_needed": "Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI.",
+            },
+        ]
+        ranked = sorted(candidates, key=lambda item: item["priority_score"], reverse=True)
+        for rank, candidate in enumerate(ranked, start=1):
+            rows.append(
+                {
+                    "record_id": record_id,
+                    "source": source,
+                    "rank": rank,
+                    "clinical_question": candidate["clinical_question"],
+                    "priority_score": round(float(candidate["priority_score"]), 3),
+                    "evidence": candidate["evidence"],
+                    "next_data_needed": candidate["next_data_needed"],
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _stage_epoch_view(
+    labels: pd.DataFrame,
+    yasa_predictions: pd.DataFrame | None,
+) -> pd.DataFrame:
+    reference = labels[labels["included"]].copy()
+    reference["source"] = "reference_hypnogram"
+    reference["stage"] = reference["mapped_stage"]
+    parts = [reference[["record_id", "epoch_index", "source", "stage"]]]
+    if yasa_predictions is not None:
+        aligned = align_model_predictions(
+            labels,
+            yasa_predictions,
+            model_name="yasa_sleepstaging",
+        )
+        aligned["source"] = "yasa_sleepstaging"
+        aligned["stage"] = aligned["predicted_stage"]
+        parts.append(aligned[["record_id", "epoch_index", "source", "stage"]])
+    return pd.concat(parts, ignore_index=True)
+
+
+def plot_hypnogram_timeline(
+    stage_epochs: pd.DataFrame,
+    *,
+    output_path: Path,
+    epoch_seconds: float,
+) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    groups = list(stage_epochs.groupby(["record_id", "source"], sort=True))
+    height = max(2.4, 1.6 * len(groups))
+    fig, axes = plt.subplots(len(groups), 1, figsize=(11, height), sharex=False)
+    if len(groups) == 1:
+        axes = [axes]
+    for axis, ((record_id, source), group) in zip(axes, groups):
+        ordered = group.sort_values("epoch_index")
+        x_hours = ordered["epoch_index"].astype(float) * float(epoch_seconds) / 3600.0
+        y = ordered["stage"].map(STAGE_TO_CODE)
+        axis.step(x_hours, y, where="post", color="#234b6d", linewidth=0.8)
+        axis.set_yticks([0, 1, 2, 3, 4])
+        axis.set_yticklabels(["N3", "N2", "N1", "REM", "Wake"])
+        axis.set_ylim(-0.4, 4.4)
+        axis.set_ylabel(f"{record_id}\n{source}", rotation=0, ha="right", va="center")
+        axis.grid(axis="y", alpha=0.25)
+    axes[-1].set_xlabel("Recording time (hours)")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=160)
+    plt.close(fig)
+    return output_path
+
+
+def plot_sleep_architecture(
+    metrics: pd.DataFrame,
+    *,
+    output_path: Path,
+) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    labels = [f"{row.record_id}\n{row.source}" for row in metrics.itertuples()]
+    bottoms = [0.0] * len(metrics)
+    fig, axis = plt.subplots(figsize=(max(8.0, len(metrics) * 1.15), 4.8))
+    for stage in SLEEP_STAGES:
+        values = metrics[f"{stage.lower()}_pct_tst"].fillna(0.0).astype(float).tolist()
+        axis.bar(
+            labels,
+            values,
+            bottom=bottoms,
+            label=stage,
+            color=STAGE_COLORS[stage],
+        )
+        bottoms = [bottom + value for bottom, value in zip(bottoms, values)]
+    axis.set_ylabel("% of total sleep time")
+    axis.set_ylim(0, 100)
+    axis.legend(ncols=4, loc="upper center", bbox_to_anchor=(0.5, 1.16))
+    axis.grid(axis="y", alpha=0.25)
+    axis.tick_params(axis="x", labelrotation=35)
+    for label in axis.get_xticklabels():
+        label.set_horizontalalignment("right")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=160)
+    plt.close(fig)
+    return output_path
+
+
 def _fmt(value: Any, digits: int = 1) -> str:
     try:
         numeric = float(value)
@@ -318,6 +537,10 @@ def build_sleep_clinical_education_report(
     records: list[str],
     metrics: pd.DataFrame,
     indicators: pd.DataFrame,
+    question_ranking: pd.DataFrame,
+    discrepancy: pd.DataFrame | None,
+    hypnogram_plot: Path,
+    architecture_plot: Path,
 ) -> str:
     metric_rows = []
     for _, row in metrics.iterrows():
@@ -354,6 +577,36 @@ def build_sleep_clinical_education_report(
                     "indicator": row["indicator"],
                     "status": row["status"],
                     "evidence": row["evidence"],
+                }
+            )
+
+    ranking_rows = []
+    for _, row in question_ranking[question_ranking["rank"] <= 3].iterrows():
+        ranking_rows.append(
+            {
+                "record": row["record_id"],
+                "source": row["source"],
+                "rank": int(row["rank"]),
+                "question": row["clinical_question"],
+                "score": _fmt(row["priority_score"], digits=2),
+                "evidence": row["evidence"],
+            }
+        )
+
+    discrepancy_rows = []
+    if discrepancy is not None and not discrepancy.empty:
+        top_discrepancies = discrepancy[discrepancy["pair_type"] == "discrepancy"].sort_values(
+            ["record_id", "epoch_count"],
+            ascending=[True, False],
+        )
+        for _, row in top_discrepancies.groupby("record_id", sort=True).head(4).iterrows():
+            discrepancy_rows.append(
+                {
+                    "record": row["record_id"],
+                    "reference": row["reference_stage"],
+                    "yasa": row["yasa_stage"],
+                    "epochs": int(row["epoch_count"]),
+                    "% epochs": _fmt(row["pct_record_epochs"]),
                 }
             )
 
@@ -399,12 +652,39 @@ def build_sleep_clinical_education_report(
             ],
         ),
         "",
+        "## Figures",
+        "",
+        f"- Hypnogram timeline: `{hypnogram_plot.as_posix()}`",
+        f"- Sleep architecture: `{architecture_plot.as_posix()}`",
+        "",
         "## Clinical Learning Indicators",
         "",
         _markdown_table(
             indicator_rows,
             ["record", "source", "domain", "indicator", "status", "evidence"],
         ),
+        "",
+        "## Clinical Question Ranking",
+        "",
+        _markdown_table(
+            ranking_rows,
+            ["record", "source", "rank", "question", "score", "evidence"],
+        ),
+        "",
+        "## Reference vs YASA Discrepancy",
+        "",
+        (
+            "This table highlights where model-derived staging would change downstream "
+            "sleep-quality reasoning. Large discrepancies should be investigated before "
+            "using model-derived metrics clinically."
+        ),
+        "",
+        _markdown_table(
+            discrepancy_rows,
+            ["record", "reference", "yasa", "epochs", "% epochs"],
+        )
+        if discrepancy_rows
+        else "YASA discrepancy table was not generated for this run.",
         "",
         "## How To Read This",
         "",
@@ -522,13 +802,15 @@ def write_clinical_learning_plan(path: str | Path) -> Path:
                 "",
                 "## Implementation Tasks",
                 "",
-                "1. Compute sleep quality metrics from 30 s stage epochs.",
-                "2. Separate full recording metrics from inferred main sleep-period metrics.",
-                "3. Generate clinical learning indicators for sleep duration, continuity, latency, REM timing, and fragmentation.",
-                "4. Mark disorder areas that cannot be diagnosed from stage metrics alone.",
-                "5. Add a treatment learning map that shows how confirmed evidence would guide clinical questions.",
-                "6. Write an educational report that maps data patterns to next clinical questions and missing data.",
-                "7. Keep raw EDF files out of git while committing compact metrics and reports.",
+                "1. Done: compute sleep quality metrics from 30 s stage epochs.",
+                "2. Done: separate full recording metrics from inferred main sleep-period metrics.",
+                "3. Done: generate clinical learning indicators for sleep duration, continuity, latency, REM timing, and fragmentation.",
+                "4. Done: mark disorder areas that cannot be diagnosed from stage metrics alone.",
+                "5. Done: add a treatment learning map that shows how confirmed evidence would guide clinical questions.",
+                "6. Done: add hypnogram timelines, sleep architecture plots, model discrepancy tables, and clinical question rankings.",
+                "7. Done: write pilot and five-record educational reports that map data patterns to next clinical questions and missing data.",
+                "8. Done: keep raw EDF files out of git while committing compact metrics, reports, and figures.",
+                "9. Next: add a respiratory PSG dataset so OSA-style reasoning can use airflow, effort, SpO2, and apnea/hypopnea annotations.",
                 "",
                 "## Diagnostic Reasoning Boundaries",
                 "",
@@ -538,11 +820,16 @@ def write_clinical_learning_plan(path: str | Path) -> Path:
                 "- Narcolepsy requires symptoms and usually MSLT; overnight REM latency alone is not enough.",
                 "- Treatment decisions require clinician review and disorder-specific evidence, but the report should show the reasoning path.",
                 "",
-                "## Immediate Command",
+                "## Current Commands",
                 "",
                 "```bash",
                 "uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011 --output-prefix pilot --include-yasa",
+                "uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --output-prefix five_record --include-yasa",
                 "```",
+                "",
+                "## Next Dataset Direction",
+                "",
+                "Use `reports/respiratory_dataset_candidates.md` to start the respiratory-event phase. The recommended first integration target is the MIT-BIH Polysomnographic Database because it is small, open, and includes sleep/apnea annotations plus respiration signals.",
                 "",
             ]
         ),
@@ -558,6 +845,7 @@ def run_sleep_edf_clinical_education(
     output_prefix: str,
     include_yasa: bool,
 ) -> SleepClinicalEducationOutputs:
+    output_prefix = clean_output_prefix(output_prefix)
     outputs = config["outputs"]
     validation = validate_sleep_edf_manifest(outputs["manifest_csv"], records=records)
     if not bool(validation["checksum_ok"].all()):
@@ -583,8 +871,13 @@ def run_sleep_edf_clinical_education(
             epoch_seconds=epoch_seconds,
         )
     ]
+    yasa_predictions = None
+    discrepancy = None
     if include_yasa:
-        yasa_predictions = pd.read_csv(outputs["yasa_predictions_csv"])
+        yasa_predictions_path = scoped_sleep_edf_output_path(output_prefix, "yasa_predictions.csv")
+        if not yasa_predictions_path.exists():
+            yasa_predictions_path = Path(outputs["yasa_predictions_csv"])
+        yasa_predictions = pd.read_csv(yasa_predictions_path)
         aligned = align_model_predictions(
             labels_df,
             yasa_predictions,
@@ -598,21 +891,55 @@ def run_sleep_edf_clinical_education(
                 epoch_seconds=epoch_seconds,
             )
         )
+        discrepancy = build_yasa_discrepancy_table(labels_df, yasa_predictions)
     metrics = pd.concat(metric_parts, ignore_index=True)
     indicators = build_clinical_indicators(metrics)
+    question_ranking = build_clinical_question_ranking(metrics)
+    stage_epochs = _stage_epoch_view(labels_df, yasa_predictions)
 
-    metrics_out = Path("results") / "sleep_edf" / f"{output_prefix}_sleep_quality_metrics.csv"
-    indicators_out = Path("results") / "sleep_edf" / f"{output_prefix}_clinical_indicators.csv"
-    report_out = Path("reports") / f"sleep_edf_{output_prefix}_clinical_education.md"
-    for out in (metrics_out, indicators_out, report_out):
+    metrics_out = scoped_sleep_edf_output_path(output_prefix, "sleep_quality_metrics.csv")
+    indicators_out = scoped_sleep_edf_output_path(output_prefix, "clinical_indicators.csv")
+    question_ranking_out = scoped_sleep_edf_output_path(
+        output_prefix,
+        "clinical_question_ranking.csv",
+    )
+    discrepancy_out = (
+        scoped_sleep_edf_output_path(output_prefix, "yasa_discrepancy.csv")
+        if discrepancy is not None
+        else None
+    )
+    report_out = scoped_sleep_edf_report_path(output_prefix, "clinical_education.md")
+    hypnogram_plot = Path("figures") / "sleep_edf" / f"{output_prefix}_hypnogram_timeline.png"
+    architecture_plot = Path("figures") / "sleep_edf" / f"{output_prefix}_sleep_architecture.png"
+    for out in (
+        metrics_out,
+        indicators_out,
+        question_ranking_out,
+        report_out,
+        hypnogram_plot,
+        architecture_plot,
+    ):
         out.parent.mkdir(parents=True, exist_ok=True)
     metrics.to_csv(metrics_out, index=False)
     indicators.to_csv(indicators_out, index=False)
+    question_ranking.to_csv(question_ranking_out, index=False)
+    if discrepancy is not None and discrepancy_out is not None:
+        discrepancy.to_csv(discrepancy_out, index=False)
+    plot_hypnogram_timeline(
+        stage_epochs,
+        output_path=hypnogram_plot,
+        epoch_seconds=epoch_seconds,
+    )
+    plot_sleep_architecture(metrics, output_path=architecture_plot)
     report_out.write_text(
         build_sleep_clinical_education_report(
             records=records,
             metrics=metrics,
             indicators=indicators,
+            question_ranking=question_ranking,
+            discrepancy=discrepancy,
+            hypnogram_plot=hypnogram_plot,
+            architecture_plot=architecture_plot,
         ),
         encoding="utf-8",
     )
@@ -620,5 +947,9 @@ def run_sleep_edf_clinical_education(
     return SleepClinicalEducationOutputs(
         metrics_csv=metrics_out,
         indicators_csv=indicators_out,
+        discrepancy_csv=discrepancy_out,
+        question_ranking_csv=question_ranking_out,
+        hypnogram_plot_png=hypnogram_plot,
+        architecture_plot_png=architecture_plot,
         report_md=report_out,
     )

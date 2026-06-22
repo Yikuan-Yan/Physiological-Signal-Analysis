@@ -16,6 +16,11 @@ from physio_signal_lab.evaluation.sleep_staging import (
     stage_summary,
 )
 from physio_signal_lab.io.sleep_edf import validate_sleep_edf_manifest
+from physio_signal_lab.sleep_outputs import (
+    clean_output_prefix,
+    scoped_sleep_edf_output_path,
+    scoped_sleep_edf_report_path,
+)
 from physio_signal_lab.yasa_profile import run_yasa_worker_subprocess
 
 
@@ -58,9 +63,11 @@ def build_sleep_edf_pilot_report(
     metrics: pd.DataFrame,
     dependency_status: dict[str, str],
     include_yasa: bool,
+    output_prefix: str = "pilot",
     yasa_metrics: pd.DataFrame | None = None,
     yasa_note: str | None = None,
 ) -> str:
+    scope = clean_output_prefix(output_prefix).replace("_", " ")
     overall = metrics[metrics["record_id"] == "all"].iloc[0]
     metric_tables = [("majority_stage_baseline", metrics)]
     if yasa_metrics is not None:
@@ -141,20 +148,21 @@ def build_sleep_edf_pilot_report(
         )
 
     lines = [
-        "# Sleep-EDF Pilot Benchmark Report",
+        "# Sleep-EDF Benchmark Report",
         "",
         "## Scope",
         "",
         (
-            "This pilot benchmark verifies EDF reading, 30 s hypnogram expansion, "
+            "This benchmark verifies EDF reading, 30 s hypnogram expansion, "
             "R&K-to-five-class mapping, and a majority-stage baseline on the downloaded "
-            "Sleep Cassette pilot records."
+            "Sleep Cassette records."
         ),
         "",
         "This report does not evaluate sleep quality, diagnose sleep disorders, or make event-detector accuracy claims.",
         "",
         "## Records",
         "",
+        f"- Output scope: {scope}.",
         f"- Records: {', '.join(records)}.",
         f"- MNE status: {dependency_status.get('mne', 'unknown')}.",
         f"- scikit-learn status: {dependency_status.get('sklearn', 'unknown')}.",
@@ -214,7 +222,9 @@ def run_sleep_edf_pilot_benchmark(
     *,
     records: list[str],
     include_yasa: bool = False,
+    output_prefix: str = "pilot",
 ) -> SleepEdfBenchmarkOutputs:
+    output_prefix = clean_output_prefix(output_prefix)
     outputs = config["outputs"]
     validation = validate_sleep_edf_manifest(outputs["manifest_csv"], records=records)
     if not bool(validation["checksum_ok"].all()):
@@ -249,7 +259,7 @@ def run_sleep_edf_pilot_benchmark(
         probability_parts = []
         channel_config = config["channels"]["staging"]
         timeout_seconds = float(config.get("yasa", {}).get("worker_timeout_seconds", 300.0))
-        output_dir = Path(outputs["yasa_predictions_csv"]).parent
+        output_dir = scoped_sleep_edf_output_path(output_prefix, "yasa_predictions.csv").parent
         output_dir.mkdir(parents=True, exist_ok=True)
         for path_set in paths:
             temp_predictions = output_dir / f".{path_set.record_id}_yasa_predictions.tmp.csv"
@@ -283,32 +293,35 @@ def run_sleep_edf_pilot_benchmark(
         )
         yasa_metrics = sleep_stage_metrics(aligned_yasa, model_name="yasa_sleepstaging")
 
-    epoch_labels_out = Path(outputs["epoch_labels_csv"])
+    epoch_labels_out = scoped_sleep_edf_output_path(output_prefix, "epoch_labels.csv")
     epoch_labels_out.parent.mkdir(parents=True, exist_ok=True)
     labels_df.to_csv(epoch_labels_out, index=False)
 
-    baseline_metrics_out = Path(outputs["baseline_metrics_csv"])
+    baseline_metrics_out = scoped_sleep_edf_output_path(output_prefix, "baseline_metrics.csv")
     baseline_metrics_out.parent.mkdir(parents=True, exist_ok=True)
     metrics.to_csv(baseline_metrics_out, index=False)
 
-    stage_summary_out = Path(outputs["baseline_stage_summary_csv"])
+    stage_summary_out = scoped_sleep_edf_output_path(output_prefix, "stage_summary.csv")
     stage_summary_out.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(stage_summary_out, index=False)
 
     if include_yasa and yasa_metrics is not None:
-        yasa_predictions_out = Path(outputs["yasa_predictions_csv"])
+        yasa_predictions_out = scoped_sleep_edf_output_path(output_prefix, "yasa_predictions.csv")
         yasa_predictions_out.parent.mkdir(parents=True, exist_ok=True)
         raw_yasa_predictions.to_csv(yasa_predictions_out, index=False)
 
-        yasa_probabilities_out = Path(outputs["yasa_probabilities_csv"])
+        yasa_probabilities_out = scoped_sleep_edf_output_path(
+            output_prefix,
+            "yasa_probabilities.csv",
+        )
         yasa_probabilities_out.parent.mkdir(parents=True, exist_ok=True)
         yasa_probabilities.to_csv(yasa_probabilities_out, index=False)
 
-        yasa_metrics_out = Path(outputs["yasa_metrics_csv"])
+        yasa_metrics_out = scoped_sleep_edf_output_path(output_prefix, "yasa_metrics.csv")
         yasa_metrics_out.parent.mkdir(parents=True, exist_ok=True)
         yasa_metrics.to_csv(yasa_metrics_out, index=False)
 
-    report_out = Path(outputs["pilot_benchmark_report_md"])
+    report_out = scoped_sleep_edf_report_path(output_prefix, "benchmark.md")
     report_out.parent.mkdir(parents=True, exist_ok=True)
     report_out.write_text(
         build_sleep_edf_pilot_report(
@@ -317,6 +330,7 @@ def run_sleep_edf_pilot_benchmark(
             metrics=metrics,
             dependency_status=_dependency_status(),
             include_yasa=include_yasa,
+            output_prefix=output_prefix,
             yasa_metrics=yasa_metrics,
             yasa_note=yasa_note,
         ),

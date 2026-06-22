@@ -13,6 +13,11 @@ import pandas as pd
 
 from physio_signal_lab.evaluation.sleep_staging import paths_from_selection
 from physio_signal_lab.io.sleep_edf import validate_sleep_edf_manifest
+from physio_signal_lab.sleep_outputs import (
+    clean_output_prefix,
+    scoped_sleep_edf_output_path,
+    scoped_sleep_edf_report_path,
+)
 
 
 @dataclass(frozen=True)
@@ -202,6 +207,7 @@ def run_yasa_profile(
     records: list[str],
     crop_seconds: float | None,
     timeout_seconds: float,
+    output_prefix: str | None = None,
 ) -> YasaProfileOutputs:
     outputs = config["outputs"]
     validation = validate_sleep_edf_manifest(outputs["manifest_csv"], records=records)
@@ -225,11 +231,16 @@ def run_yasa_profile(
     ]
 
     profile = pd.DataFrame(rows)
-    profile_out = Path(outputs["yasa_profile_csv"])
+    if output_prefix is None:
+        profile_out = Path(outputs["yasa_profile_csv"])
+        report_out = Path(outputs["yasa_profile_report_md"])
+    else:
+        output_prefix = clean_output_prefix(output_prefix)
+        profile_out = scoped_sleep_edf_output_path(output_prefix, "yasa_runtime_profile.csv")
+        report_out = scoped_sleep_edf_report_path(output_prefix, "yasa_profile.md")
     profile_out.parent.mkdir(parents=True, exist_ok=True)
     profile.to_csv(profile_out, index=False)
 
-    report_out = Path(outputs["yasa_profile_report_md"])
     report_out.parent.mkdir(parents=True, exist_ok=True)
     report_out.write_text(build_yasa_profile_report(profile), encoding="utf-8")
     return YasaProfileOutputs(profile_csv=profile_out, report_md=report_out)

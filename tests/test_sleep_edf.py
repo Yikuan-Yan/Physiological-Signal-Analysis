@@ -26,7 +26,13 @@ from physio_signal_lab.evaluation.sleep_staging import (
     sleep_stage_metrics,
 )
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
+from physio_signal_lab.sleep_outputs import (
+    clean_output_prefix,
+    scoped_sleep_edf_output_path,
+)
 from physio_signal_lab.sleep_quality import (
+    build_clinical_question_ranking,
+    build_yasa_discrepancy_table,
     build_clinical_indicators,
     sleep_quality_metrics,
 )
@@ -169,6 +175,7 @@ def test_expand_stage_annotations_maps_and_crops_to_signal_duration():
 
 def test_parse_sleep_stage_description_rejects_non_stage_annotations():
     assert parse_sleep_stage_description("Sleep stage R") == "R"
+    assert parse_sleep_stage_description("Movement time") == "M"
     with pytest.raises(ValueError):
         parse_sleep_stage_description("Lights off")
 
@@ -328,6 +335,64 @@ def test_clinical_indicators_mark_disease_domains_as_not_diagnosed():
     assert "cannot_assess_from_stage_metrics" in statuses
     assert "cannot_diagnose_from_psg_alone" in statuses
     assert "not_recommended_from_this_dataset" in statuses
+
+
+def test_scoped_sleep_edf_output_prefix_paths_are_validated():
+    assert scoped_sleep_edf_output_path("five_record", "epoch_labels.csv").as_posix() == (
+        "results/sleep_edf/five_record_epoch_labels.csv"
+    )
+    assert clean_output_prefix("pilot-1") == "pilot-1"
+    with pytest.raises(ValueError):
+        clean_output_prefix("../bad")
+
+
+def test_yasa_discrepancy_table_counts_stage_pairs():
+    labels = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 1, "mapped_stage": "N2", "included": True},
+            {"record_id": "SC4001", "epoch_index": 2, "mapped_stage": "REM", "included": True},
+        ]
+    )
+    yasa = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "predicted_stage": "WAKE"},
+            {"record_id": "SC4001", "epoch_index": 1, "predicted_stage": "WAKE"},
+            {"record_id": "SC4001", "epoch_index": 2, "predicted_stage": "REM"},
+        ]
+    )
+
+    discrepancy = build_yasa_discrepancy_table(labels, yasa)
+    assert set(discrepancy["pair_type"]) == {"agreement", "discrepancy"}
+    n2_to_wake = discrepancy[
+        (discrepancy["reference_stage"] == "N2") & (discrepancy["yasa_stage"] == "WAKE")
+    ].iloc[0]
+    assert n2_to_wake["epoch_count"] == 1
+    assert n2_to_wake["pct_record_epochs"] == pytest.approx(100.0 / 3.0)
+
+
+def test_clinical_question_ranking_prioritizes_low_continuity():
+    metrics = pd.DataFrame(
+        [
+            {
+                "record_id": "SC4001",
+                "source": "reference",
+                "total_sleep_time_minutes": 450.0,
+                "sleep_period_efficiency_pct": 60.0,
+                "waso_minutes": 180.0,
+                "sleep_onset_latency_proxy_minutes": 20.0,
+                "rem_latency_minutes": 90.0,
+                "awakening_count": 30,
+                "rem_pct_tst": 20.0,
+                "n3_pct_tst": 15.0,
+            }
+        ]
+    )
+
+    ranking = build_clinical_question_ranking(metrics)
+    top = ranking[ranking["rank"] == 1].iloc[0]
+    assert top["clinical_question"] == "Is sleep continuity poor?"
+    assert top["priority_score"] > 0
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):

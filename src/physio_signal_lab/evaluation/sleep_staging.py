@@ -34,6 +34,8 @@ class SleepEdfPaths:
 
 
 def parse_sleep_stage_description(description: str) -> str:
+    if str(description) == "Movement time":
+        return "M"
     match = SLEEP_STAGE_DESCRIPTION_RE.match(str(description))
     if match is None:
         raise ValueError(f"Unsupported Sleep-EDF annotation description: {description!r}")
