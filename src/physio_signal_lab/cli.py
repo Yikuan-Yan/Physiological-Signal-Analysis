@@ -29,6 +29,7 @@ from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
 from physio_signal_lab.sleep_edf_benchmark import run_sleep_edf_pilot_benchmark
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
+from physio_signal_lab.sleep_quality import run_sleep_edf_clinical_education
 from physio_signal_lab.yasa_profile import run_yasa_profile
 
 
@@ -327,6 +328,24 @@ def profile_yasa_runtime(args: argparse.Namespace) -> int:
     return 0
 
 
+def sleep_edf_clinical_education(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    records = _csv_record_override(args.records)
+    if records is None:
+        records = [f"SC{int(subject):03d}1" for subject in config["selection"]["pilot_subjects"]]
+    outputs = run_sleep_edf_clinical_education(
+        config,
+        records=records,
+        output_prefix=args.output_prefix,
+        include_yasa=args.include_yasa,
+    )
+    print(f"wrote {outputs.metrics_csv}")
+    print(f"wrote {outputs.indicators_csv}")
+    print(f"wrote {outputs.report_md}")
+    print("wrote reports\\sleep_edf_clinical_learning_plan.md")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -440,6 +459,13 @@ def build_parser() -> argparse.ArgumentParser:
     yasa_profile_parser.add_argument("--full-night", action="store_true")
     yasa_profile_parser.add_argument("--timeout-seconds", type=float, default=120.0)
     yasa_profile_parser.set_defaults(func=profile_yasa_runtime)
+
+    clinical_parser = subparsers.add_parser("run-sleep-edf-clinical-education")
+    clinical_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    clinical_parser.add_argument("--records", default=None)
+    clinical_parser.add_argument("--output-prefix", default="pilot")
+    clinical_parser.add_argument("--include-yasa", action="store_true")
+    clinical_parser.set_defaults(func=sleep_edf_clinical_education)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

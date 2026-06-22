@@ -26,6 +26,10 @@ from physio_signal_lab.evaluation.sleep_staging import (
     sleep_stage_metrics,
 )
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
+from physio_signal_lab.sleep_quality import (
+    build_clinical_indicators,
+    sleep_quality_metrics,
+)
 from physio_signal_lab.yasa_profile import build_yasa_profile_report
 
 
@@ -261,6 +265,69 @@ def test_yasa_profile_report_summarizes_runtime_gate_rows():
     assert "timed out: 1" in report
     assert "errored: 1" in report
     assert "runtime gate, not a sleep-stage benchmark" in report
+
+
+def test_sleep_quality_metrics_compute_continuity_from_stage_epochs():
+    epochs = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 1, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 2, "mapped_stage": "N1", "included": True},
+            {"record_id": "SC4001", "epoch_index": 3, "mapped_stage": "N2", "included": True},
+            {"record_id": "SC4001", "epoch_index": 4, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 5, "mapped_stage": "N3", "included": True},
+            {"record_id": "SC4001", "epoch_index": 6, "mapped_stage": "REM", "included": True},
+            {"record_id": "SC4001", "epoch_index": 7, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 8, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 9, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 10, "mapped_stage": "", "included": False},
+        ]
+    )
+
+    metrics = sleep_quality_metrics(
+        epochs,
+        stage_column="mapped_stage",
+        source="reference",
+        epoch_seconds=30.0,
+    )
+    row = metrics.iloc[0]
+    assert row["included_minutes"] == pytest.approx(5.0)
+    assert row["total_sleep_time_minutes"] == pytest.approx(2.0)
+    assert row["recording_sleep_efficiency_pct"] == pytest.approx(40.0)
+    assert row["sleep_onset_latency_proxy_minutes"] == pytest.approx(1.0)
+    assert row["sleep_period_minutes"] == pytest.approx(2.5)
+    assert row["sleep_period_efficiency_pct"] == pytest.approx(80.0)
+    assert row["waso_minutes"] == pytest.approx(0.5)
+    assert row["terminal_wake_minutes"] == pytest.approx(1.5)
+    assert row["rem_latency_minutes"] == pytest.approx(2.0)
+    assert row["awakening_count"] == 1
+    assert row["longest_wake_bout_after_sleep_onset_minutes"] == pytest.approx(0.5)
+    assert row["stage_transition_count"] == 4
+    assert row["n3_pct_tst"] == pytest.approx(25.0)
+    assert row["rem_pct_tst"] == pytest.approx(25.0)
+
+
+def test_clinical_indicators_mark_disease_domains_as_not_diagnosed():
+    metrics = pd.DataFrame(
+        [
+            {
+                "record_id": "SC4001",
+                "source": "reference",
+                "total_sleep_time_minutes": 320.0,
+                "sleep_period_efficiency_pct": 80.0,
+                "waso_minutes": 70.0,
+                "sleep_onset_latency_proxy_minutes": 35.0,
+                "rem_latency_minutes": 45.0,
+            }
+        ]
+    )
+
+    indicators = build_clinical_indicators(metrics)
+    statuses = set(indicators["status"])
+    assert "screen_positive" in statuses
+    assert "cannot_assess_from_stage_metrics" in statuses
+    assert "cannot_diagnose_from_psg_alone" in statuses
+    assert "not_recommended_from_this_dataset" in statuses
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):
