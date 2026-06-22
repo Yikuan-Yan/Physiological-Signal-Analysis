@@ -33,6 +33,27 @@ rr_nn:
     max: 2000
   window_seconds: 300
 
+hrv_frequency:
+  interpolation_hz: 4.0
+  welch_nperseg_seconds: 64
+  min_nn_intervals: 30
+  bands_hz:
+    lf:
+      - 0.04
+      - 0.15
+    hf:
+      - 0.15
+      - 0.40
+  lomb_frequency_grid_hz:
+    min: 0.0033333333333333335
+    max: 0.5
+    count: 4096
+
+uncertainty:
+  seed: 20260622
+  bootstrap_iterations: 2000
+  ci: 0.95
+
 artifact_experiment:
   seed: 20260622
   rates:
@@ -61,3 +82,6 @@ outputs:
   window_metrics_csv: results/rr_nn/window_metrics.csv
   artifact_sensitivity_csv: results/artifacts/artifact_sensitivity.csv
   artifact_summary_csv: results/artifacts/artifact_summary.csv
+  frequency_window_metrics_csv: results/hrv_frequency/frequency_window_metrics.csv
+  hrv_record_summary_csv: results/hrv_frequency/hrv_record_summary.csv
+  hrv_uncertainty_csv: results/hrv_frequency/hrv_uncertainty.csv

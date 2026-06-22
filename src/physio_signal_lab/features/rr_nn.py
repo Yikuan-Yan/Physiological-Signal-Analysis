@@ -6,6 +6,10 @@ import numpy as np
 import pandas as pd
 
 from physio_signal_lab.features.hrv_time import hrv_to_dict, time_domain_hrv
+from physio_signal_lab.features.hrv_frequency import (
+    frequency_domain_hrv,
+    frequency_to_dict,
+)
 from physio_signal_lab.io.fantasia import load_record
 
 
@@ -108,5 +112,47 @@ def window_metrics(intervals: pd.DataFrame, *, window_seconds: float) -> pd.Data
                 "valid_fraction": int(len(nn)) / total if total else np.nan,
             }
             row.update(hrv_to_dict(metrics))
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def frequency_window_metrics(
+    intervals: pd.DataFrame,
+    *,
+    window_seconds: float,
+    interpolation_hz: float,
+    nperseg_seconds: float,
+    lf_band: tuple[float, float],
+    hf_band: tuple[float, float],
+    lomb_frequency_grid_hz: np.ndarray,
+    min_nn_intervals: int,
+) -> pd.DataFrame:
+    rows = []
+    for record_id, group in intervals.groupby("record_id", sort=True):
+        window_index = np.floor(group["end_time_s"].to_numpy() / window_seconds).astype(int)
+        group = group.assign(window_index=window_index)
+        for idx, window in group.groupby("window_index", sort=True):
+            nn = window[window["is_nn"]]
+            metrics = frequency_domain_hrv(
+                nn["end_time_s"].to_numpy(dtype=np.float64),
+                nn["rr_ms"].to_numpy(dtype=np.float64),
+                interpolation_hz=interpolation_hz,
+                nperseg_seconds=nperseg_seconds,
+                lf_band=lf_band,
+                hf_band=hf_band,
+                lomb_frequency_grid_hz=lomb_frequency_grid_hz,
+                min_nn_intervals=min_nn_intervals,
+            )
+            start_s = float(idx * window_seconds)
+            row = {
+                "record_id": record_id,
+                "cohort": window["cohort"].iloc[0],
+                "age": int(window["age"].iloc[0]),
+                "sex": window["sex"].iloc[0],
+                "window_index": int(idx),
+                "window_start_s": start_s,
+                "window_end_s": start_s + window_seconds,
+            }
+            row.update(frequency_to_dict(metrics))
             rows.append(row)
     return pd.DataFrame(rows)
