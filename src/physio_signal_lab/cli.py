@@ -22,6 +22,7 @@ from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manif
 from physio_signal_lab.manifest import validate_manifest
 from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
+from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
 
 
 def _csv_record_override(value: str | None) -> list[str] | None:
@@ -234,6 +235,15 @@ def freeze_release(args: argparse.Namespace) -> int:
     return 0
 
 
+def sleep_edf_preflight(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    outputs = run_sleep_edf_preflight(config)
+    print(f"wrote {outputs.selection_csv}")
+    print(f"wrote {outputs.manifest_csv}")
+    print(f"wrote {outputs.report_md}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -318,6 +328,10 @@ def build_parser() -> argparse.ArgumentParser:
     release_parser.add_argument("--release-name", default="hrv-core-v0.1.0")
     release_parser.add_argument("--output-root", default="releases")
     release_parser.set_defaults(func=freeze_release)
+
+    sleep_edf_parser = subparsers.add_parser("run-sleep-edf-preflight")
+    sleep_edf_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    sleep_edf_parser.set_defaults(func=sleep_edf_preflight)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")
