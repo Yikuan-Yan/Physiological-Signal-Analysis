@@ -20,6 +20,7 @@ from physio_signal_lab.features.uncertainty import (
 )
 from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manifest
 from physio_signal_lab.manifest import validate_manifest
+from physio_signal_lab.reporting import write_hrv_core_report
 
 
 def _csv_record_override(value: str | None) -> list[str] | None:
@@ -209,6 +210,15 @@ def run_frequency_hrv(args: argparse.Namespace) -> int:
     return 0
 
 
+def build_report(args: argparse.Namespace) -> int:
+    if args.report != "hrv-core":
+        raise ValueError(f"Unsupported report: {args.report}")
+    config = load_config(args.config)
+    out = write_hrv_core_report(config, args.out)
+    print(f"wrote {out}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -241,6 +251,12 @@ def run_ecg_core(args: argparse.Namespace) -> int:
     benchmark_peaks(benchmark_args)
     run_rr_artifacts(rr_artifact_args)
     run_frequency_hrv(frequency_args)
+    report_args = argparse.Namespace(
+        config=args.config,
+        report="hrv-core",
+        out=config["outputs"]["hrv_core_report_md"],
+    )
+    build_report(report_args)
     return 0
 
 
@@ -274,6 +290,12 @@ def build_parser() -> argparse.ArgumentParser:
     frequency_parser.add_argument("--config", default="configs/hrv_core.yaml")
     frequency_parser.add_argument("--records", default=None)
     frequency_parser.set_defaults(func=run_frequency_hrv)
+
+    report_parser = subparsers.add_parser("build-report")
+    report_parser.add_argument("report", choices=["hrv-core"])
+    report_parser.add_argument("--config", default="configs/hrv_core.yaml")
+    report_parser.add_argument("--out", default=None)
+    report_parser.set_defaults(func=build_report)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

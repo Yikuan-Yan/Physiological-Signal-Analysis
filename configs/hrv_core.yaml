@@ -85,3 +85,4 @@ outputs:
   frequency_window_metrics_csv: results/hrv_frequency/frequency_window_metrics.csv
   hrv_record_summary_csv: results/hrv_frequency/hrv_record_summary.csv
   hrv_uncertainty_csv: results/hrv_frequency/hrv_uncertainty.csv
+  hrv_core_report_md: reports/hrv_core_report.md
