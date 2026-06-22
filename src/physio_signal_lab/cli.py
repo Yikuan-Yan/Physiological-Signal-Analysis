@@ -20,6 +20,7 @@ from physio_signal_lab.features.uncertainty import (
 )
 from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manifest
 from physio_signal_lab.manifest import validate_manifest
+from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
 
 
@@ -219,6 +220,20 @@ def build_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def freeze_release(args: argparse.Namespace) -> int:
+    if args.release != "hrv-core":
+        raise ValueError(f"Unsupported release: {args.release}")
+    config = load_config(args.config)
+    release_dir = build_release_bundle(
+        config,
+        config_path=args.config,
+        release_name=args.release_name,
+        output_root=args.output_root,
+    )
+    print(f"wrote {release_dir}")
+    return 0
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -296,6 +311,13 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--config", default="configs/hrv_core.yaml")
     report_parser.add_argument("--out", default=None)
     report_parser.set_defaults(func=build_report)
+
+    release_parser = subparsers.add_parser("freeze-release")
+    release_parser.add_argument("release", choices=["hrv-core"])
+    release_parser.add_argument("--config", default="configs/hrv_core.yaml")
+    release_parser.add_argument("--release-name", default="hrv-core-v0.1.0")
+    release_parser.add_argument("--output-root", default="releases")
+    release_parser.set_defaults(func=freeze_release)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")
