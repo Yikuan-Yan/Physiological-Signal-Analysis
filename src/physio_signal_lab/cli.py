@@ -19,6 +19,11 @@ from physio_signal_lab.features.uncertainty import (
     record_summary,
 )
 from physio_signal_lab.io.fantasia import build_inventory, record_ids_from_manifest
+from physio_signal_lab.io.sleep_edf import (
+    download_sleep_edf_selection,
+    update_manifest_checksums,
+    validate_sleep_edf_manifest,
+)
 from physio_signal_lab.manifest import validate_manifest
 from physio_signal_lab.release import build_release_bundle
 from physio_signal_lab.reporting import write_hrv_core_report
@@ -244,6 +249,42 @@ def sleep_edf_preflight(args: argparse.Namespace) -> int:
     return 0
 
 
+def download_sleep_edf(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    outputs = config["outputs"]
+    records = _csv_record_override(args.records)
+    summary = download_sleep_edf_selection(
+        outputs["selection_csv"],
+        records=records,
+        overwrite=args.overwrite,
+    )
+    summary_out = _ensure_parent(outputs["download_summary_csv"])
+    summary.to_csv(summary_out, index=False)
+    manifest_out = update_manifest_checksums(outputs["manifest_csv"], records=records)
+    print(f"wrote {summary_out} rows={len(summary)}")
+    print(f"updated {manifest_out}")
+    print(f"bytes={int(summary['bytes'].sum())}")
+    print(f"downloaded={(summary['status'].str.startswith('downloaded')).sum()}")
+    print(f"skipped_existing={(summary['status'] == 'skipped_existing').sum()}")
+    return 0
+
+
+def validate_sleep_edf(args: argparse.Namespace) -> int:
+    config = load_config(args.config)
+    outputs = config["outputs"]
+    records = _csv_record_override(args.records)
+    validation = validate_sleep_edf_manifest(outputs["manifest_csv"], records=records)
+    validation_out = _ensure_parent(outputs["validation_csv"])
+    validation.to_csv(validation_out, index=False)
+    missing = int((~validation["exists"]).sum())
+    checksum_mismatches = int((~validation["checksum_ok"]).sum())
+    print(f"wrote {validation_out} rows={len(validation)}")
+    print(f"missing_files={missing}")
+    print(f"checksum_mismatches={checksum_mismatches}")
+    print(f"bytes={int(validation['bytes'].sum())}")
+    return 0 if missing == 0 and checksum_mismatches == 0 else 1
+
+
 def run_ecg_core(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     manifest = config["dataset"]["manifest"]
@@ -332,6 +373,17 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_edf_parser = subparsers.add_parser("run-sleep-edf-preflight")
     sleep_edf_parser.add_argument("--config", default="configs/sleep_edf.yaml")
     sleep_edf_parser.set_defaults(func=sleep_edf_preflight)
+
+    sleep_edf_download_parser = subparsers.add_parser("download-sleep-edf")
+    sleep_edf_download_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    sleep_edf_download_parser.add_argument("--records", default=None)
+    sleep_edf_download_parser.add_argument("--overwrite", action="store_true")
+    sleep_edf_download_parser.set_defaults(func=download_sleep_edf)
+
+    sleep_edf_validate_parser = subparsers.add_parser("validate-sleep-edf")
+    sleep_edf_validate_parser.add_argument("--config", default="configs/sleep_edf.yaml")
+    sleep_edf_validate_parser.add_argument("--records", default=None)
+    sleep_edf_validate_parser.set_defaults(func=validate_sleep_edf)
 
     run_parser = subparsers.add_parser("run-ecg-core")
     run_parser.add_argument("--config", default="configs/hrv_core.yaml")

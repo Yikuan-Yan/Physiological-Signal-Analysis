@@ -72,4 +72,6 @@ channels:
 outputs:
   selection_csv: results/sleep_edf/sleep_edf_selection.csv
   manifest_csv: data_manifest_sleep_edf.csv
+  download_summary_csv: results/sleep_edf/download_summary.csv
+  validation_csv: results/sleep_edf/sleep_edf_validation.csv
   preflight_report_md: reports/sleep_edf_preflight.md

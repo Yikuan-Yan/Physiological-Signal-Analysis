@@ -10,8 +10,11 @@ from physio_signal_lab.features.sleep_stages import (
 )
 from physio_signal_lab.io.sleep_edf import (
     build_sleep_cassette_selection,
+    download_file,
     extract_edf_filenames,
     parse_sleep_edf_filename,
+    update_manifest_checksums,
+    validate_sleep_edf_manifest,
 )
 from physio_signal_lab.sleep_edf_preflight import run_sleep_edf_preflight
 
@@ -152,3 +155,34 @@ def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):
     assert Path(config["dataset"]["raw_dir"]).as_posix() in outputs.manifest_csv.read_text(
         encoding="utf-8"
     )
+
+
+def test_download_updates_and_validates_manifest_checksums(tmp_path):
+    source = tmp_path / "source.edf"
+    source.write_bytes(b"edf bytes")
+    local = tmp_path / "raw" / "SC4001E0-PSG.edf"
+
+    result = download_file(source.resolve().as_uri(), local)
+    assert result["status"] == "downloaded"
+    assert local.read_bytes() == b"edf bytes"
+
+    manifest = tmp_path / "manifest.csv"
+    missing = tmp_path / "raw" / "SC4011E0-PSG.edf"
+    manifest.write_text(
+        "\n".join(
+            [
+                "dataset,version,doi,license,access_date,source_url,record_id,local_path,sha256,included,exclusion_reason",
+                f"Sleep-EDF,1.0.0,doi,license,2026-06-22,{source.resolve().as_uri()},SC4001,{local.as_posix()},,true,",
+                f"Sleep-EDF,1.0.0,doi,license,2026-06-22,{source.resolve().as_uri()},SC4011,{missing.as_posix()},,true,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    update_manifest_checksums(manifest, records=["SC4001"])
+    validation = validate_sleep_edf_manifest(manifest, records=["SC4001"])
+    assert validation["exists"].tolist() == [True]
+    assert validation["checksum_ok"].tolist() == [True]
+    updated_manifest = manifest.read_text(encoding="utf-8")
+    assert result["sha256"] in updated_manifest

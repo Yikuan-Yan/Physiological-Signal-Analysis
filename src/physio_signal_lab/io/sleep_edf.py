@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 import csv
+import hashlib
 import re
 
 import pandas as pd
@@ -62,6 +63,53 @@ def fetch_edf_filenames(index_url: str) -> list[str]:
     return extract_edf_filenames(fetch_text(index_url))
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def download_file(
+    url: str,
+    output_path: str | Path,
+    *,
+    overwrite: bool = False,
+    timeout_seconds: float = 120.0,
+    chunk_size: int = 1024 * 1024,
+) -> dict[str, Any]:
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    existed_before = out.exists()
+    if existed_before and not overwrite:
+        return {
+            "source_url": url,
+            "local_path": out.as_posix(),
+            "status": "skipped_existing",
+            "bytes": out.stat().st_size,
+            "sha256": sha256_file(out),
+        }
+
+    temporary = out.with_name(f"{out.name}.part")
+    if temporary.exists():
+        temporary.unlink()
+    with urlopen(url, timeout=timeout_seconds) as response, temporary.open("wb") as f:
+        while True:
+            chunk = response.read(chunk_size)
+            if not chunk:
+                break
+            f.write(chunk)
+    temporary.replace(out)
+    return {
+        "source_url": url,
+        "local_path": out.as_posix(),
+        "status": "downloaded_overwrite" if existed_before else "downloaded",
+        "bytes": out.stat().st_size,
+        "sha256": sha256_file(out),
+    }
+
+
 def _paired_files(files: list[SleepEdfFile]) -> dict[tuple[int, int], dict[str, SleepEdfFile]]:
     pairs: dict[tuple[int, int], dict[str, SleepEdfFile]] = {}
     for file in files:
@@ -112,6 +160,111 @@ def build_sleep_cassette_selection(
                 "hypnogram_local_path": (
                     raw_root / "sleep-cassette" / hypnogram.filename
                 ).as_posix(),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _selection_download_rows(selection: pd.DataFrame) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    for _, row in selection.iterrows():
+        for file_role in ("psg", "hypnogram"):
+            rows.append(
+                {
+                    "recording_id": str(row["recording_id"]),
+                    "file_role": file_role,
+                    "source_url": str(row[f"{file_role}_url"]),
+                    "local_path": str(row[f"{file_role}_local_path"]),
+                }
+            )
+    return rows
+
+
+def download_sleep_edf_selection(
+    selection_csv: str | Path,
+    *,
+    records: list[str] | None = None,
+    overwrite: bool = False,
+) -> pd.DataFrame:
+    selection = pd.read_csv(selection_csv)
+    if records is not None:
+        wanted = set(records)
+        selection = selection[selection["recording_id"].isin(wanted)].copy()
+    if selection.empty:
+        raise ValueError("No Sleep-EDF records selected for download")
+
+    rows = []
+    for item in _selection_download_rows(selection):
+        result = download_file(
+            item["source_url"],
+            item["local_path"],
+            overwrite=overwrite,
+        )
+        rows.append({**item, **result})
+    return pd.DataFrame(rows)
+
+
+def update_manifest_checksums(
+    manifest_csv: str | Path,
+    *,
+    output_path: str | Path | None = None,
+    records: list[str] | None = None,
+) -> Path:
+    manifest_path = Path(manifest_csv)
+    rows: list[dict[str, str]]
+    with manifest_path.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames
+        if fieldnames is None:
+            raise ValueError(f"Manifest has no header: {manifest_path}")
+        rows = [dict(row) for row in reader]
+
+    wanted = set(records) if records is not None else None
+    for row in rows:
+        if row.get("included", "").lower() != "true":
+            continue
+        if wanted is not None and row.get("record_id") not in wanted:
+            continue
+        local_path = Path(row["local_path"])
+        if not local_path.exists():
+            continue
+        row["sha256"] = sha256_file(local_path)
+
+    out = Path(output_path or manifest_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows)
+    return out
+
+
+def validate_sleep_edf_manifest(
+    manifest_csv: str | Path,
+    *,
+    records: list[str] | None = None,
+) -> pd.DataFrame:
+    manifest = pd.read_csv(manifest_csv)
+    if records is not None:
+        wanted = set(records)
+        manifest = manifest[manifest["record_id"].isin(wanted)].copy()
+    if manifest.empty:
+        raise ValueError("No Sleep-EDF manifest rows selected for validation")
+    rows: list[dict[str, Any]] = []
+    for _, row in manifest.iterrows():
+        local_path = Path(str(row["local_path"]))
+        expected_sha = "" if pd.isna(row["sha256"]) else str(row["sha256"])
+        exists = local_path.exists()
+        actual_sha = sha256_file(local_path) if exists else ""
+        rows.append(
+            {
+                "record_id": row["record_id"],
+                "local_path": local_path.as_posix(),
+                "exists": exists,
+                "bytes": local_path.stat().st_size if exists else 0,
+                "expected_sha256": expected_sha,
+                "actual_sha256": actual_sha,
+                "checksum_ok": bool(expected_sha) and exists and actual_sha == expected_sha,
             }
         )
     return pd.DataFrame(rows)
