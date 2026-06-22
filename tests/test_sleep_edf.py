@@ -18,8 +18,10 @@ from physio_signal_lab.io.sleep_edf import (
     validate_sleep_edf_manifest,
 )
 from physio_signal_lab.evaluation.sleep_staging import (
+    align_model_predictions,
     expand_stage_annotations,
     majority_stage_predictions,
+    map_yasa_stage,
     parse_sleep_stage_description,
     sleep_stage_metrics,
 )
@@ -188,6 +190,39 @@ def test_majority_baseline_metrics_are_record_and_all_level():
     overall = metrics[metrics["record_id"] == "all"].iloc[0]
     assert overall["epoch_count"] == 5
     assert 0.0 <= overall["macro_f1"] <= 1.0
+
+
+def test_yasa_stage_mapping_and_alignment():
+    assert [map_yasa_stage(stage) for stage in ["W", "N1", "N2", "N3", "R"]] == [
+        "WAKE",
+        "N1",
+        "N2",
+        "N3",
+        "REM",
+    ]
+    labels = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 1, "mapped_stage": "N1", "included": True},
+            {"record_id": "SC4001", "epoch_index": 2, "mapped_stage": "", "included": False},
+        ]
+    )
+    predictions = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "predicted_stage": "WAKE"},
+            {"record_id": "SC4001", "epoch_index": 1, "predicted_stage": "N2"},
+            {"record_id": "SC4001", "epoch_index": 2, "predicted_stage": "N3"},
+        ]
+    )
+
+    aligned = align_model_predictions(labels, predictions, model_name="yasa")
+    assert aligned["predicted_stage"].tolist() == ["WAKE", "N2"]
+    assert aligned["model"].tolist() == ["yasa", "yasa"]
+
+
+def test_yasa_stage_mapping_rejects_unknown_label():
+    with pytest.raises(ValueError):
+        map_yasa_stage("UNKNOWN")
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):

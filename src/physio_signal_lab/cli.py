@@ -291,10 +291,20 @@ def sleep_edf_pilot_benchmark(args: argparse.Namespace) -> int:
     records = _csv_record_override(args.records)
     if records is None:
         records = [f"SC{int(subject):03d}1" for subject in config["selection"]["pilot_subjects"]]
-    outputs = run_sleep_edf_pilot_benchmark(config, records=records)
+    outputs = run_sleep_edf_pilot_benchmark(
+        config,
+        records=records,
+        include_yasa=args.include_yasa,
+    )
     print(f"wrote {outputs.epoch_labels_csv}")
     print(f"wrote {outputs.baseline_metrics_csv}")
     print(f"wrote {outputs.stage_summary_csv}")
+    if outputs.yasa_predictions_csv is not None:
+        print(f"wrote {outputs.yasa_predictions_csv}")
+    if outputs.yasa_probabilities_csv is not None:
+        print(f"wrote {outputs.yasa_probabilities_csv}")
+    if outputs.yasa_metrics_csv is not None:
+        print(f"wrote {outputs.yasa_metrics_csv}")
     print(f"wrote {outputs.report_md}")
     return 0
 
@@ -402,6 +412,7 @@ def build_parser() -> argparse.ArgumentParser:
     sleep_edf_benchmark_parser = subparsers.add_parser("run-sleep-edf-pilot-benchmark")
     sleep_edf_benchmark_parser.add_argument("--config", default="configs/sleep_edf.yaml")
     sleep_edf_benchmark_parser.add_argument("--records", default=None)
+    sleep_edf_benchmark_parser.add_argument("--include-yasa", action="store_true")
     sleep_edf_benchmark_parser.set_defaults(func=sleep_edf_pilot_benchmark)
 
     run_parser = subparsers.add_parser("run-ecg-core")

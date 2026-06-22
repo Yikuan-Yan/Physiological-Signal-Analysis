@@ -8,9 +8,11 @@ import importlib.util
 import pandas as pd
 
 from physio_signal_lab.evaluation.sleep_staging import (
+    align_model_predictions,
     majority_stage_predictions,
     paths_from_selection,
     read_sleep_edf_epoch_labels,
+    run_yasa_predictions,
     sleep_stage_metrics,
     stage_summary,
 )
@@ -23,6 +25,9 @@ class SleepEdfBenchmarkOutputs:
     baseline_metrics_csv: Path
     stage_summary_csv: Path
     report_md: Path
+    yasa_predictions_csv: Path | None = None
+    yasa_probabilities_csv: Path | None = None
+    yasa_metrics_csv: Path | None = None
 
 
 def _fmt(value: float, digits: int = 3) -> str:
@@ -52,21 +57,58 @@ def build_sleep_edf_pilot_report(
     stage_summary_df: pd.DataFrame,
     metrics: pd.DataFrame,
     dependency_status: dict[str, str],
+    include_yasa: bool,
+    yasa_metrics: pd.DataFrame | None = None,
+    yasa_note: str | None = None,
 ) -> str:
     overall = metrics[metrics["record_id"] == "all"].iloc[0]
-    rows = []
-    for _, row in metrics.iterrows():
-        rows.append(
-            {
-                "record": row["record_id"],
-                "epochs": int(row["epoch_count"]),
-                "majority ref": row["majority_reference_stage"],
-                "accuracy": _fmt(row["accuracy"]),
-                "balanced accuracy": _fmt(row["balanced_accuracy"]),
-                "macro-F1": _fmt(row["macro_f1"]),
-                "kappa": _fmt(row["cohen_kappa"]),
-            }
-        )
+    metric_tables = [("majority_stage_baseline", metrics)]
+    if yasa_metrics is not None:
+        metric_tables.append(("yasa_sleepstaging", yasa_metrics))
+
+    metric_rows = []
+    for model_name, table in metric_tables:
+        for _, row in table.iterrows():
+            metric_rows.append(
+                {
+                    "model": model_name,
+                    "record": row["record_id"],
+                    "epochs": int(row["epoch_count"]),
+                    "majority ref": row["majority_reference_stage"],
+                    "accuracy": _fmt(row["accuracy"]),
+                    "balanced accuracy": _fmt(row["balanced_accuracy"]),
+                    "macro-F1": _fmt(row["macro_f1"]),
+                    "kappa": _fmt(row["cohen_kappa"]),
+                }
+            )
+
+    yasa_lines = []
+    if include_yasa and yasa_metrics is not None:
+        yasa_overall = yasa_metrics[yasa_metrics["record_id"] == "all"].iloc[0]
+        yasa_lines = [
+            "YASA staging was run with the frozen channel settings and aligned to the same included epoch table.",
+            "",
+            f"- YASA overall accuracy: {_fmt(yasa_overall['accuracy'])}.",
+            f"- YASA balanced accuracy: {_fmt(yasa_overall['balanced_accuracy'])}.",
+            f"- YASA macro-F1: {_fmt(yasa_overall['macro_f1'])}.",
+            f"- YASA Cohen's kappa: {_fmt(yasa_overall['cohen_kappa'])}.",
+            "",
+        ]
+    elif include_yasa:
+        yasa_lines = [
+            f"YASA staging was requested but not completed: {yasa_note or 'unknown error'}.",
+            "",
+        ]
+    else:
+        yasa_lines = [
+            (
+                "YASA staging was not requested in this run. Use `--include-yasa` in a "
+                "Python 3.12 sleep-extra environment to generate YASA predictions. In the "
+                "current local run, full-night YASA execution is still runtime-gated; see "
+                "`reports/sleep_edf_yasa_runtime_gate.md`."
+            ),
+            "",
+        ]
 
     stage_rows = []
     for _, row in stage_summary_df.iterrows():
@@ -103,11 +145,7 @@ def build_sleep_edf_pilot_report(
         f"- scikit-learn status: {dependency_status.get('sklearn', 'unknown')}.",
         f"- YASA status: {dependency_status.get('yasa', 'unknown')}.",
         "",
-        (
-            "YASA staging was not run in this stage because the current Python 3.13 "
-            "environment could not resolve a compatible YASA dependency set. The benchmark "
-            "therefore reports only the frozen majority-stage baseline."
-        ),
+        *yasa_lines,
         "",
         "## Stage Distribution",
         "",
@@ -116,11 +154,20 @@ def build_sleep_edf_pilot_report(
             ["record", "included", "excluded", "WAKE", "N1", "N2", "N3", "REM"],
         ),
         "",
-        "## Majority-Stage Baseline",
+        "## Model Metrics",
         "",
         _markdown_table(
-            rows,
-            ["record", "epochs", "majority ref", "accuracy", "balanced accuracy", "macro-F1", "kappa"],
+            metric_rows,
+            [
+                "model",
+                "record",
+                "epochs",
+                "majority ref",
+                "accuracy",
+                "balanced accuracy",
+                "macro-F1",
+                "kappa",
+            ],
         ),
         "",
         f"- Overall included epochs: {int(overall['epoch_count'])}.",
@@ -135,14 +182,15 @@ def build_sleep_edf_pilot_report(
         "uv sync --extra sleep --extra dev",
         "uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4001,SC4011",
         "uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011",
+        "uv sync --python 3.12 --extra sleep --extra dev",
+        "uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011 --include-yasa",
         "```",
         "",
         "## Next Step",
         "",
         (
-            "Resolve the YASA dependency blocker or run the sleep benchmark in a compatible "
-            "Python environment, then add YASA predictions and probability outputs using the "
-            "same aligned epoch table."
+            "Resolve the local YASA runtime gate, then run YASA on the pilot records before "
+            "downloading and evaluating the remaining frozen benchmark records."
         ),
         "",
     ]
@@ -153,6 +201,7 @@ def run_sleep_edf_pilot_benchmark(
     config: dict[str, Any],
     *,
     records: list[str],
+    include_yasa: bool = False,
 ) -> SleepEdfBenchmarkOutputs:
     outputs = config["outputs"]
     validation = validate_sleep_edf_manifest(outputs["manifest_csv"], records=records)
@@ -177,6 +226,33 @@ def run_sleep_edf_pilot_benchmark(
     predictions = majority_stage_predictions(labels_df)
     metrics = sleep_stage_metrics(predictions, model_name="majority_stage_baseline")
     summary = stage_summary(labels_df, metadata_df)
+    yasa_predictions_out = None
+    yasa_probabilities_out = None
+    yasa_metrics_out = None
+    yasa_metrics = None
+    yasa_note = None
+
+    if include_yasa:
+        prediction_parts = []
+        probability_parts = []
+        channel_config = config["channels"]["staging"]
+        for path_set in paths:
+            model_predictions, probability = run_yasa_predictions(
+                path_set,
+                eeg_name=channel_config["eeg_name"],
+                eog_name=channel_config.get("eog_name"),
+                emg_name=channel_config.get("emg_name"),
+            )
+            prediction_parts.append(model_predictions)
+            probability_parts.append(probability)
+        raw_yasa_predictions = pd.concat(prediction_parts, ignore_index=True)
+        yasa_probabilities = pd.concat(probability_parts, ignore_index=True)
+        aligned_yasa = align_model_predictions(
+            labels_df,
+            raw_yasa_predictions,
+            model_name="yasa_sleepstaging",
+        )
+        yasa_metrics = sleep_stage_metrics(aligned_yasa, model_name="yasa_sleepstaging")
 
     epoch_labels_out = Path(outputs["epoch_labels_csv"])
     epoch_labels_out.parent.mkdir(parents=True, exist_ok=True)
@@ -190,6 +266,19 @@ def run_sleep_edf_pilot_benchmark(
     stage_summary_out.parent.mkdir(parents=True, exist_ok=True)
     summary.to_csv(stage_summary_out, index=False)
 
+    if include_yasa and yasa_metrics is not None:
+        yasa_predictions_out = Path(outputs["yasa_predictions_csv"])
+        yasa_predictions_out.parent.mkdir(parents=True, exist_ok=True)
+        raw_yasa_predictions.to_csv(yasa_predictions_out, index=False)
+
+        yasa_probabilities_out = Path(outputs["yasa_probabilities_csv"])
+        yasa_probabilities_out.parent.mkdir(parents=True, exist_ok=True)
+        yasa_probabilities.to_csv(yasa_probabilities_out, index=False)
+
+        yasa_metrics_out = Path(outputs["yasa_metrics_csv"])
+        yasa_metrics_out.parent.mkdir(parents=True, exist_ok=True)
+        yasa_metrics.to_csv(yasa_metrics_out, index=False)
+
     report_out = Path(outputs["pilot_benchmark_report_md"])
     report_out.parent.mkdir(parents=True, exist_ok=True)
     report_out.write_text(
@@ -198,6 +287,9 @@ def run_sleep_edf_pilot_benchmark(
             stage_summary_df=summary,
             metrics=metrics,
             dependency_status=_dependency_status(),
+            include_yasa=include_yasa,
+            yasa_metrics=yasa_metrics,
+            yasa_note=yasa_note,
         ),
         encoding="utf-8",
     )
@@ -207,4 +299,7 @@ def run_sleep_edf_pilot_benchmark(
         baseline_metrics_csv=baseline_metrics_out,
         stage_summary_csv=stage_summary_out,
         report_md=report_out,
+        yasa_predictions_csv=yasa_predictions_out,
+        yasa_probabilities_csv=yasa_probabilities_out,
+        yasa_metrics_csv=yasa_metrics_out,
     )

@@ -77,5 +77,8 @@ outputs:
   epoch_labels_csv: results/sleep_edf/pilot_epoch_labels.csv
   baseline_metrics_csv: results/sleep_edf/pilot_baseline_metrics.csv
   baseline_stage_summary_csv: results/sleep_edf/pilot_stage_summary.csv
+  yasa_predictions_csv: results/sleep_edf/pilot_yasa_predictions.csv
+  yasa_probabilities_csv: results/sleep_edf/pilot_yasa_probabilities.csv
+  yasa_metrics_csv: results/sleep_edf/pilot_yasa_metrics.csv
   preflight_report_md: reports/sleep_edf_preflight.md
   pilot_benchmark_report_md: reports/sleep_edf_pilot_benchmark.md
