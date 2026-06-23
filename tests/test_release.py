@@ -66,6 +66,19 @@ def test_build_release_bundle_copies_core_files_and_excludes_raw_data(tmp_path):
     assert not list(release_dir.rglob("*.dat"))
 
 
+def test_build_release_bundle_rejects_existing_release_directory(tmp_path):
+    config = {"dataset": {"manifest": "missing.csv"}, "outputs": {}}
+    (tmp_path / "releases" / "existing").mkdir(parents=True)
+
+    with pytest.raises(FileExistsError):
+        build_release_bundle(
+            config,
+            config_path="missing.yaml",
+            release_name="existing",
+            output_root=tmp_path / "releases",
+        )
+
+
 @pytest.mark.parametrize("release_name", ["../x", "x/y", "", ".", ".."])
 def test_build_release_bundle_rejects_path_like_release_names(tmp_path, release_name):
     config = {"dataset": {"manifest": "missing.csv"}, "outputs": {}}

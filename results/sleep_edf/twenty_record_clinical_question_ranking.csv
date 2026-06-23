@@ -23,7 +23,7 @@ SC4041,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begin
 SC4041,reference_hypnogram,2,Is respiratory-event evidence needed?,0.867,"Fragmentation proxy: 28 awakenings, WASO 40.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4041,reference_hypnogram,3,Is REM or stage architecture unusual?,0.488,"REM latency 72.0 min, N3 5.1% TST, REM 18.9% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4041,reference_hypnogram,4,Is sleep duration insufficient?,0.0,TST 517.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4041,reference_hypnogram,5,Is sleep continuity poor?,0.0,"Sleep-period efficiency 92.8%, WASO 40.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4041,reference_hypnogram,5,Is sleep continuity poor?,0.0,"Sleep-period efficiency 92.7%, WASO 40.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4051,reference_hypnogram,1,Is sleep duration insufficient?,3.133,TST 232.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
 SC4051,reference_hypnogram,2,Is lights-out context needed?,1.0,First sleep begins 644.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4051,reference_hypnogram,3,Is sleep continuity poor?,0.094,"Sleep-period efficiency 84.1%, WASO 44.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
@@ -47,16 +47,16 @@ SC4081,reference_hypnogram,5,Is respiratory-event evidence needed?,0.194,"Fragme
 SC4091,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 402.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4091,reference_hypnogram,2,Is REM or stage architecture unusual?,0.2,"REM latency 54.0 min, N3 17.3% TST, REM 23.6% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4091,reference_hypnogram,3,Is sleep duration insufficient?,0.0,TST 491.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4091,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 97.0%, WASO 15.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4091,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 96.0%, WASO 15.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4091,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 6 awakenings, WASO 15.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4101,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 381.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4101,reference_hypnogram,2,Is REM or stage architecture unusual?,0.937,"REM latency 83.5 min, N3 0.6% TST, REM 21.8% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4101,reference_hypnogram,3,Is sleep duration insufficient?,0.0,TST 474.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4101,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 96.4%, WASO 17.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4101,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 96.3%, WASO 17.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4101,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 12 awakenings, WASO 17.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4111,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 467.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4111,reference_hypnogram,2,Is sleep duration insufficient?,0.317,TST 401.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4111,reference_hypnogram,3,Is sleep continuity poor?,0.0,"Sleep-period efficiency 99.3%, WASO 3.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4111,reference_hypnogram,3,Is sleep continuity poor?,0.0,"Sleep-period efficiency 99.1%, WASO 3.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4111,reference_hypnogram,4,Is REM or stage architecture unusual?,0.0,"REM latency 101.5 min, N3 16.1% TST, REM 19.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4111,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 4 awakenings, WASO 3.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4121,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 481.0 min after recording start.,Lights-out marker and patient-reported bedtime.
@@ -76,19 +76,19 @@ SC4141,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficie
 SC4141,reference_hypnogram,5,Is REM or stage architecture unusual?,0.0,"REM latency 64.0 min, N3 18.5% TST, REM 28.5% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4151,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 447.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4151,reference_hypnogram,2,Is sleep duration insufficient?,0.5,TST 390.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4151,reference_hypnogram,3,Is REM or stage architecture unusual?,0.25,"REM latency 52.5 min, N3 22.7% TST, REM 26.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
-SC4151,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 93.8%, WASO 26.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
-SC4151,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 6 awakenings, WASO 26.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4151,reference_hypnogram,3,Is REM or stage architecture unusual?,0.233,"REM latency 53.0 min, N3 22.7% TST, REM 26.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
+SC4151,reference_hypnogram,4,Is sleep continuity poor?,0.0,"Sleep-period efficiency 93.3%, WASO 26.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4151,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 5 awakenings, WASO 26.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4161,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 371.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4161,reference_hypnogram,2,Is sleep duration insufficient?,0.0,TST 464.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4161,reference_hypnogram,3,Is sleep continuity poor?,0.0,"Sleep-period efficiency 90.6%, WASO 48.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4161,reference_hypnogram,3,Is sleep continuity poor?,0.0,"Sleep-period efficiency 90.2%, WASO 48.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4161,reference_hypnogram,4,Is REM or stage architecture unusual?,0.0,"REM latency 62.5 min, N3 17.8% TST, REM 28.0% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4161,reference_hypnogram,5,Is respiratory-event evidence needed?,0.0,"Fragmentation proxy: 13 awakenings, WASO 48.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4171,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 483.5 min after recording start.,Lights-out marker and patient-reported bedtime.
-SC4171,reference_hypnogram,2,Is REM or stage architecture unusual?,0.675,"REM latency 160.5 min, N3 26.0% TST, REM 31.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
-SC4171,reference_hypnogram,3,Is respiratory-event evidence needed?,0.333,"Fragmentation proxy: 20 awakenings, WASO 28.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4171,reference_hypnogram,2,Is REM or stage architecture unusual?,0.683,"REM latency 161.0 min, N3 26.0% TST, REM 31.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
+SC4171,reference_hypnogram,3,Is respiratory-event evidence needed?,0.267,"Fragmentation proxy: 19 awakenings, WASO 28.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
 SC4171,reference_hypnogram,4,Is sleep duration insufficient?,0.117,TST 413.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4171,reference_hypnogram,5,Is sleep continuity poor?,0.0,"Sleep-period efficiency 93.7%, WASO 28.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4171,reference_hypnogram,5,Is sleep continuity poor?,0.0,"Sleep-period efficiency 93.5%, WASO 28.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4181,reference_hypnogram,1,Is lights-out context needed?,1.0,First sleep begins 448.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4181,reference_hypnogram,2,Is REM or stage architecture unusual?,0.588,"REM latency 151.0 min, N3 35.2% TST, REM 14.3% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4181,reference_hypnogram,3,Is sleep duration insufficient?,0.117,TST 413.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
@@ -119,8 +119,8 @@ SC4031,yasa_sleepstaging,2,Is sleep continuity poor?,17.777,"Sleep-period effici
 SC4031,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.0,"REM latency 0.0 min, N3 17.9% TST, REM 37.4% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4031,yasa_sleepstaging,4,Is lights-out context needed?,0.525,First sleep begins 61.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4031,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 490.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4041,yasa_sleepstaging,1,Is respiratory-event evidence needed?,17.139,"Fragmentation proxy: 133 awakenings, WASO 491.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4041,yasa_sleepstaging,2,Is sleep continuity poor?,10.272,"Sleep-period efficiency 54.2%, WASO 491.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4041,yasa_sleepstaging,1,Is respiratory-event evidence needed?,17.141,"Fragmentation proxy: 133 awakenings, WASO 491.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4041,yasa_sleepstaging,2,Is sleep continuity poor?,10.275,"Sleep-period efficiency 54.2%, WASO 491.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4041,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.235,"REM latency 0.0 min, N3 7.7% TST, REM 34.0% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4041,yasa_sleepstaging,4,Is lights-out context needed?,1.0,First sleep begins 196.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4041,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 581.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
@@ -144,18 +144,18 @@ SC4081,yasa_sleepstaging,2,Is sleep continuity poor?,17.224,"Sleep-period effici
 SC4081,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.0,"REM latency 0.0 min, N3 34.1% TST, REM 38.1% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4081,yasa_sleepstaging,4,Is sleep duration insufficient?,0.0,TST 547.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
 SC4081,yasa_sleepstaging,5,Is lights-out context needed?,0.0,First sleep begins 25.5 min after recording start.,Lights-out marker and patient-reported bedtime.
-SC4091,yasa_sleepstaging,1,Is respiratory-event evidence needed?,18.504,"Fragmentation proxy: 73 awakenings, WASO 735.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4091,yasa_sleepstaging,2,Is sleep continuity poor?,15.637,"Sleep-period efficiency 41.1%, WASO 735.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4091,yasa_sleepstaging,1,Is respiratory-event evidence needed?,18.522,"Fragmentation proxy: 73 awakenings, WASO 735.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4091,yasa_sleepstaging,2,Is sleep continuity poor?,15.655,"Sleep-period efficiency 40.9%, WASO 735.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4091,yasa_sleepstaging,3,Is lights-out context needed?,1.0,First sleep begins 96.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4091,yasa_sleepstaging,4,Is sleep duration insufficient?,0.0,TST 513.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
 SC4091,yasa_sleepstaging,5,Is REM or stage architecture unusual?,0.0,"REM latency 85.0 min, N3 18.5% TST, REM 22.6% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
-SC4101,yasa_sleepstaging,1,Is respiratory-event evidence needed?,21.529,"Fragmentation proxy: 171 awakenings, WASO 600.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4101,yasa_sleepstaging,2,Is sleep continuity poor?,12.129,"Sleep-period efficiency 53.8%, WASO 600.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4101,yasa_sleepstaging,1,Is respiratory-event evidence needed?,21.531,"Fragmentation proxy: 171 awakenings, WASO 600.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4101,yasa_sleepstaging,2,Is sleep continuity poor?,12.131,"Sleep-period efficiency 53.8%, WASO 600.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4101,yasa_sleepstaging,3,Is lights-out context needed?,0.325,First sleep begins 49.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4101,yasa_sleepstaging,4,Is REM or stage architecture unusual?,0.256,"REM latency 78.0 min, N3 7.4% TST, REM 35.3% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4101,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 699.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4111,yasa_sleepstaging,1,Is respiratory-event evidence needed?,20.819,"Fragmentation proxy: 101 awakenings, WASO 752.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4111,yasa_sleepstaging,2,Is sleep continuity poor?,16.086,"Sleep-period efficiency 39.5%, WASO 752.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4111,yasa_sleepstaging,1,Is respiratory-event evidence needed?,20.821,"Fragmentation proxy: 101 awakenings, WASO 752.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4111,yasa_sleepstaging,2,Is sleep continuity poor?,16.087,"Sleep-period efficiency 39.5%, WASO 752.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4111,yasa_sleepstaging,3,Is REM or stage architecture unusual?,1.292,"REM latency 197.5 min, N3 12.6% TST, REM 34.7% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4111,yasa_sleepstaging,4,Is lights-out context needed?,0.425,First sleep begins 55.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4111,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 490.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
@@ -174,18 +174,18 @@ SC4141,yasa_sleepstaging,2,Is sleep continuity poor?,15.37,"Sleep-period efficie
 SC4141,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.0,"REM latency 0.0 min, N3 19.1% TST, REM 26.6% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4141,yasa_sleepstaging,4,Is lights-out context needed?,1.0,First sleep begins 153.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4141,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 432.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4151,yasa_sleepstaging,1,Is respiratory-event evidence needed?,17.781,"Fragmentation proxy: 55 awakenings, WASO 745.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4151,yasa_sleepstaging,2,Is sleep continuity poor?,16.114,"Sleep-period efficiency 38.1%, WASO 745.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4151,yasa_sleepstaging,1,Is respiratory-event evidence needed?,17.721,"Fragmentation proxy: 54 awakenings, WASO 745.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4151,yasa_sleepstaging,2,Is sleep continuity poor?,16.121,"Sleep-period efficiency 38.0%, WASO 745.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4151,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.0,"REM latency 0.0 min, N3 26.6% TST, REM 34.0% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4151,yasa_sleepstaging,4,Is lights-out context needed?,0.875,First sleep begins 82.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4151,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 459.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4161,yasa_sleepstaging,1,Is respiratory-event evidence needed?,19.918,"Fragmentation proxy: 98 awakenings, WASO 724.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4161,yasa_sleepstaging,2,Is sleep continuity poor?,15.384,"Sleep-period efficiency 41.8%, WASO 724.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4161,yasa_sleepstaging,1,Is respiratory-event evidence needed?,19.859,"Fragmentation proxy: 97 awakenings, WASO 724.0 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4161,yasa_sleepstaging,2,Is sleep continuity poor?,15.393,"Sleep-period efficiency 41.7%, WASO 724.0 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4161,yasa_sleepstaging,3,Is REM or stage architecture unusual?,2.0,"REM latency 0.0 min, N3 19.1% TST, REM 27.3% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4161,yasa_sleepstaging,4,Is lights-out context needed?,0.6,First sleep begins 66.0 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4161,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 520.5 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."
-SC4171,yasa_sleepstaging,1,Is respiratory-event evidence needed?,16.217,"Fragmentation proxy: 144 awakenings, WASO 452.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
-SC4171,yasa_sleepstaging,2,Is sleep continuity poor?,8.617,"Sleep-period efficiency 64.2%, WASO 452.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
+SC4171,yasa_sleepstaging,1,Is respiratory-event evidence needed?,16.22,"Fragmentation proxy: 144 awakenings, WASO 452.5 min.","Airflow, effort, SpO2, arousals, scored apneas/hypopneas, AHI."
+SC4171,yasa_sleepstaging,2,Is sleep continuity poor?,8.62,"Sleep-period efficiency 64.2%, WASO 452.5 min.","Arousal scoring, symptoms, pain/medication review, repeated nights."
 SC4171,yasa_sleepstaging,3,Is lights-out context needed?,1.0,First sleep begins 95.5 min after recording start.,Lights-out marker and patient-reported bedtime.
 SC4171,yasa_sleepstaging,4,Is REM or stage architecture unusual?,0.667,"REM latency 40.0 min, N3 23.0% TST, REM 45.6% TST.","Medication, mood, sleep deprivation, repeated nights, MSLT if indicated."
 SC4171,yasa_sleepstaging,5,Is sleep duration insufficient?,0.0,TST 813.0 min.,"Habitual sleep schedule, sleep diary, daytime symptoms."

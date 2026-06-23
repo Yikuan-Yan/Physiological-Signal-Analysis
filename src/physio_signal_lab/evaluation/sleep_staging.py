@@ -54,13 +54,20 @@ def expand_stage_annotations(
     if epoch_seconds <= 0:
         raise ValueError("epoch_seconds must be positive")
 
-    rows: list[dict[str, Any]] = []
-    epoch_index = 0
+    expected_epochs = int(np.floor(signal_duration_seconds / epoch_seconds + 1e-9))
+    rows_by_epoch: dict[int, dict[str, Any]] = {}
     for _, annotation in annotations.sort_values("onset").iterrows():
         onset = float(annotation["onset"])
         duration = float(annotation["duration"])
         if duration <= 0 or onset >= signal_duration_seconds:
             continue
+        onset_index_float = onset / epoch_seconds
+        onset_index = int(round(onset_index_float))
+        if not np.isclose(onset_index_float, onset_index, atol=1e-6):
+            raise ValueError(
+                f"Annotation onset is not aligned to {epoch_seconds:g} s epochs "
+                f"for {record_id}: {onset:g}"
+            )
         stop = min(onset + duration, signal_duration_seconds)
         n_epochs = int(np.floor((stop - onset) / epoch_seconds + 1e-9))
         if n_epochs <= 0:
@@ -68,24 +75,43 @@ def expand_stage_annotations(
         rk_label = parse_sleep_stage_description(str(annotation["description"]))
         mapped = map_rk_label(rk_label)
         for offset in range(n_epochs):
-            epoch_onset = onset + offset * epoch_seconds
-            rows.append(
+            epoch_index = onset_index + offset
+            if epoch_index >= expected_epochs:
+                break
+            if epoch_index in rows_by_epoch:
+                raise ValueError(f"Overlapping Sleep-EDF annotations at epoch {epoch_index} for {record_id}")
+            rows_by_epoch[epoch_index] = {
+                "record_id": record_id,
+                "epoch_index": epoch_index,
+                "onset_seconds": float(epoch_index) * float(epoch_seconds),
+                "duration_seconds": float(epoch_seconds),
+                "rk_label": rk_label,
+                "mapped_stage": mapped if mapped is not None else "",
+                "included": mapped is not None,
+                "missing_or_excluded_reason": "" if mapped is not None else "excluded_stage",
+            }
+
+    rows = []
+    for epoch_index in range(expected_epochs):
+        rows.append(
+            rows_by_epoch.get(
+                epoch_index,
                 {
                     "record_id": record_id,
                     "epoch_index": epoch_index,
-                    "onset_seconds": epoch_onset,
-                    "rk_label": rk_label,
-                    "mapped_stage": mapped if mapped is not None else "",
-                    "included": mapped is not None,
-                }
+                    "onset_seconds": float(epoch_index) * float(epoch_seconds),
+                    "duration_seconds": float(epoch_seconds),
+                    "rk_label": "",
+                    "mapped_stage": "",
+                    "included": False,
+                    "missing_or_excluded_reason": "missing_annotation",
+                },
             )
-            epoch_index += 1
-
+        )
     labels = pd.DataFrame(rows)
     if labels.empty:
         raise ValueError(f"No epoch labels expanded for {record_id}")
-    expected = int(np.floor(signal_duration_seconds / epoch_seconds + 1e-9))
-    if int(labels["epoch_index"].max()) + 1 > expected:
+    if int(labels["epoch_index"].max()) + 1 > expected_epochs:
         raise ValueError(f"Expanded labels exceed signal duration for {record_id}")
     return labels
 
@@ -189,8 +215,17 @@ def run_yasa_predictions(
 
 
 def paths_from_selection(selection: pd.DataFrame, records: list[str]) -> list[SleepEdfPaths]:
+    if not records:
+        raise ValueError("At least one Sleep-EDF record must be requested")
     wanted = set(records)
-    selected = selection[selection["recording_id"].isin(wanted)].copy()
+    source = selection.copy()
+    if "included" in source.columns:
+        source = source[source["included"].astype(str).str.lower() == "true"].copy()
+    selected = source[source["recording_id"].isin(wanted)].copy()
+    found = set(selected["recording_id"].astype(str))
+    missing = sorted(wanted - found)
+    if missing:
+        raise ValueError(f"Requested Sleep-EDF records are not selected: {missing}")
     if selected.empty:
         raise ValueError("No selected Sleep-EDF records found")
     return [
@@ -203,7 +238,7 @@ def paths_from_selection(selection: pd.DataFrame, records: list[str]) -> list[Sl
     ]
 
 
-def majority_stage_predictions(labels: pd.DataFrame) -> pd.DataFrame:
+def per_record_majority_oracle_predictions(labels: pd.DataFrame) -> pd.DataFrame:
     included = labels[labels["included"]].copy()
     if included.empty:
         raise ValueError("No included sleep-stage epochs available")
@@ -213,8 +248,25 @@ def majority_stage_predictions(labels: pd.DataFrame) -> pd.DataFrame:
         majority_stage = str(counts.sort_values(ascending=False).index[0])
         predicted = group.copy()
         predicted["predicted_stage"] = majority_stage
+        predicted["baseline_type"] = "per_record_majority_oracle"
         rows.append(predicted)
     return pd.concat(rows, ignore_index=True)
+
+
+def global_majority_stage_predictions(labels: pd.DataFrame) -> pd.DataFrame:
+    included = labels[labels["included"]].copy()
+    if included.empty:
+        raise ValueError("No included sleep-stage epochs available")
+    counts = included["mapped_stage"].value_counts()
+    majority_stage = str(counts.sort_values(ascending=False).index[0])
+    predicted = included.copy()
+    predicted["predicted_stage"] = majority_stage
+    predicted["baseline_type"] = "global_majority"
+    return predicted
+
+
+def majority_stage_predictions(labels: pd.DataFrame) -> pd.DataFrame:
+    return per_record_majority_oracle_predictions(labels)
 
 
 def align_model_predictions(

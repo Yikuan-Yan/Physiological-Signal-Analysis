@@ -88,7 +88,9 @@ def download_file(
             "local_path": out.as_posix(),
             "status": "skipped_existing",
             "bytes": out.stat().st_size,
-            "sha256": sha256_file(out),
+            "local_observed_sha256": sha256_file(out),
+            "sha256": "",
+            "verified_against_upstream": False,
         }
 
     temporary = out.with_name(f"{out.name}.part")
@@ -106,7 +108,9 @@ def download_file(
         "local_path": out.as_posix(),
         "status": "downloaded_overwrite" if existed_before else "downloaded",
         "bytes": out.stat().st_size,
+        "local_observed_sha256": sha256_file(out),
         "sha256": sha256_file(out),
+        "verified_against_upstream": False,
     }
 
 
@@ -209,6 +213,7 @@ def update_manifest_checksums(
     *,
     output_path: str | Path | None = None,
     records: list[str] | None = None,
+    download_results: pd.DataFrame | None = None,
 ) -> Path:
     manifest_path = Path(manifest_csv)
     rows: list[dict[str, str]]
@@ -220,6 +225,14 @@ def update_manifest_checksums(
         rows = [dict(row) for row in reader]
 
     wanted = set(records) if records is not None else None
+    observed_by_path: dict[str, str] = {}
+    if download_results is not None:
+        for _, item in download_results.iterrows():
+            local_path = str(item.get("local_path", ""))
+            status = str(item.get("status", ""))
+            observed = str(item.get("local_observed_sha256", item.get("sha256", "")))
+            if local_path and observed and status.startswith("downloaded"):
+                observed_by_path[Path(local_path).as_posix()] = observed
     for row in rows:
         if row.get("included", "").lower() != "true":
             continue
@@ -228,7 +241,9 @@ def update_manifest_checksums(
         local_path = Path(row["local_path"])
         if not local_path.exists():
             continue
-        row["sha256"] = sha256_file(local_path)
+        local_key = local_path.as_posix()
+        if local_key in observed_by_path:
+            row["sha256"] = observed_by_path[local_key]
 
     out = Path(output_path or manifest_path)
     out.parent.mkdir(parents=True, exist_ok=True)

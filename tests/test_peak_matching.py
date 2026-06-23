@@ -37,6 +37,17 @@ def test_match_peaks_extra_and_missing_beats():
     assert result.timing_error_samples.tolist() == [0, 2, 2]
 
 
+def test_match_peaks_minimizes_timing_error_after_maximizing_matches():
+    reference = np.array([0, 8])
+    detected = np.array([5])
+    result = match_peaks(reference, detected, tolerance_samples=5)
+
+    assert result.matched_reference_indices.tolist() == [1]
+    assert result.matched_detected_indices.tolist() == [0]
+    assert result.false_negative_reference_indices.tolist() == [0]
+    assert result.timing_error_samples.tolist() == [-3]
+
+
 def test_peak_metrics_values():
     reference = np.array([100, 250, 400, 550])
     detected = np.array([100, 252, 300, 552])

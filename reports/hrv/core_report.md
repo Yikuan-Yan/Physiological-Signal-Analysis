@@ -28,7 +28,7 @@ uv run python -m physio_signal_lab.cli run-ecg-core --config configs/hrv/core.ya
 uv run pytest -q
 ```
 
-The current run produced 0 missing files and 0 checksum mismatches in `validate-data`.
+The current manifest validation produced 0 missing files, 0 checksum mismatches, and 0 missing record files.
 
 ## R-Peak Detector Benchmark
 
@@ -71,12 +71,12 @@ Artifact experiments injected missed beat, spurious extra beat, timestamp jitter
 | artifact | strategy | median RMSSD rel error | median SDNN rel error | median pNN50 rel error |
 | --- | --- | --- | --- | --- |
 | ectopic_short_long | interpolate_flagged_intervals | -3.39% | -0.45% | -6.98% |
-| ectopic_short_long | no_correction | 292.82% | 46.26% | 63.41% |
-| missed_beat | interpolate_flagged_intervals | -1.41% | -0.24% | -2.72% |
-| missed_beat | no_correction | 659.30% | 178.64% | 44.00% |
-| spurious_extra_beat | interpolate_flagged_intervals | -3.50% | -0.39% | -7.31% |
+| ectopic_short_long | no_correction | 293.16% | 46.31% | 63.36% |
+| missed_beat | interpolate_flagged_intervals | 1.72% | 2.84% | -2.34% |
+| missed_beat | no_correction | 676.39% | 185.76% | 42.77% |
+| spurious_extra_beat | interpolate_flagged_intervals | -6.31% | -3.30% | -7.51% |
 | spurious_extra_beat | no_correction | 277.70% | 99.76% | 38.06% |
-| timestamp_jitter | interpolate_flagged_intervals | -3.39% | -0.44% | -6.91% |
+| timestamp_jitter | interpolate_flagged_intervals | -3.40% | -0.44% | -6.91% |
 | timestamp_jitter | no_correction | 6.16% | 0.59% | 16.79% |
 
 ## Frequency-Domain HRV and Method Sensitivity
@@ -110,7 +110,7 @@ Uncertainty is estimated by bootstrapping record-level window medians, so record
 | gate | status | evidence |
 | --- | --- | --- |
 | Fantasia 40 records readable and inventoried | pass | 40 inventory rows |
-| Manifest and local files validated | pass | validate-data reported 0 missing files and 0 checksum mismatches |
+| Manifest and local files validated | pass | 0 missing files; 0 checksum mismatches; 0 missing record files |
 | R-peak detector evaluated against reference annotation | pass | 40 records at 50 ms; median F1 0.9994 |
 | RR and NN intervals separated with exclusion reasons | pass | 280748 NN, 4746 excluded |
 | Four artifact classes quantified | pass | 38400 artifact scenarios |

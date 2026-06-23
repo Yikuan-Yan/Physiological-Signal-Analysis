@@ -91,10 +91,15 @@ def sleep_quality_metrics(
         raise ValueError("epochs must include record_id and epoch_index columns")
 
     frame = epochs.copy()
-    if "included" in frame:
-        frame = frame[frame["included"]].copy()
     frame[stage_column] = frame[stage_column].astype(str)
-    unexpected = sorted(set(frame[stage_column]) - set(QUALITY_STAGES))
+    if "included" not in frame:
+        frame["included"] = True
+    if frame["included"].dtype == object:
+        frame["included"] = frame["included"].astype(str).str.lower() == "true"
+    else:
+        frame["included"] = frame["included"].astype(bool)
+    included_frame = frame[frame["included"]].copy()
+    unexpected = sorted(set(included_frame[stage_column]) - set(QUALITY_STAGES))
     if unexpected:
         raise ValueError(f"Unsupported sleep quality stage labels: {unexpected}")
 
@@ -103,9 +108,27 @@ def sleep_quality_metrics(
     for record_id, group in frame.sort_values(["record_id", "epoch_index"]).groupby(
         "record_id", sort=True
     ):
-        stages = group[stage_column].astype(str).tolist()
+        if group["epoch_index"].duplicated().any():
+            duplicates = group[group["epoch_index"].duplicated()]["epoch_index"].tolist()
+            raise ValueError(f"Duplicate sleep epoch_index values for {record_id}: {duplicates}")
+        by_epoch = {
+            int(row["epoch_index"]): row
+            for _, row in group.sort_values("epoch_index").iterrows()
+        }
+        max_epoch = max(by_epoch)
+        timeline_indices = list(range(0, max_epoch + 1))
+        timeline: list[dict[str, Any] | None] = [by_epoch.get(index) for index in timeline_indices]
+        valid_items = [
+            item
+            for item in timeline
+            if item is not None and bool(item["included"])
+        ]
+        stages = [str(item[stage_column]) for item in valid_items]
         total_epochs = len(stages)
-        total_minutes = float(total_epochs) * epoch_minutes
+        included_minutes = float(total_epochs) * epoch_minutes
+        elapsed_minutes = float(len(timeline_indices)) * epoch_minutes
+        missing_epoch_count = int(len(timeline_indices) - total_epochs)
+        missing_minutes = float(missing_epoch_count) * epoch_minutes
         is_sleep = [stage != "WAKE" for stage in stages]
         sleep_epochs = int(sum(is_sleep))
         sleep_minutes = float(sleep_epochs) * epoch_minutes
@@ -116,9 +139,17 @@ def sleep_quality_metrics(
             "source": source,
             "epoch_seconds": float(epoch_seconds),
             "included_epochs": total_epochs,
-            "included_minutes": total_minutes,
+            "included_minutes": included_minutes,
+            "elapsed_epoch_count": len(timeline_indices),
+            "elapsed_minutes": elapsed_minutes,
+            "missing_epoch_count": missing_epoch_count,
+            "missing_minutes": missing_minutes,
             "total_sleep_time_minutes": sleep_minutes,
-            "recording_sleep_efficiency_pct": _safe_pct(sleep_minutes, total_minutes),
+            "recording_sleep_efficiency_pct": _safe_pct(sleep_minutes, elapsed_minutes),
+            "observed_recording_sleep_efficiency_pct": _safe_pct(
+                sleep_minutes,
+                included_minutes,
+            ),
             "wake_minutes": float(counts["WAKE"]) * epoch_minutes,
         }
         for stage in SLEEP_STAGES:
@@ -133,6 +164,8 @@ def sleep_quality_metrics(
                     "last_sleep_epoch_index": math.nan,
                     "sleep_period_minutes": math.nan,
                     "sleep_period_efficiency_pct": math.nan,
+                    "observed_sleep_period_minutes": math.nan,
+                    "observed_sleep_period_efficiency_pct": math.nan,
                     "waso_minutes": math.nan,
                     "terminal_wake_minutes": math.nan,
                     "rem_latency_minutes": math.nan,
@@ -140,43 +173,101 @@ def sleep_quality_metrics(
                     "longest_wake_bout_after_sleep_onset_minutes": math.nan,
                     "stage_transition_count": 0,
                     "awakenings_per_sleep_hour": math.nan,
+                    "missing_epochs_within_sleep_period": 0,
+                    "continuity_break_count": 0,
                 }
             )
             rows.append(row)
             continue
 
-        first_sleep = next(index for index, value in enumerate(is_sleep) if value)
-        last_sleep = len(is_sleep) - 1 - next(
-            index for index, value in enumerate(reversed(is_sleep)) if value
+        valid_sleep_indices = [
+            int(item["epoch_index"])
+            for item in valid_items
+            if str(item[stage_column]) != "WAKE"
+        ]
+        first_sleep = min(valid_sleep_indices)
+        last_sleep = max(valid_sleep_indices)
+        period_indices = list(range(first_sleep, last_sleep + 1))
+        period_items = [by_epoch.get(index) for index in period_indices]
+        period_valid_items = [
+            item for item in period_items if item is not None and bool(item["included"])
+        ]
+        period_stages_by_index = {
+            int(item["epoch_index"]): str(item[stage_column])
+            for item in period_valid_items
+        }
+        period_missing = [
+            item is None or not bool(item["included"])
+            for item in period_items
+        ]
+        period_valid_minutes = float(len(period_valid_items)) * epoch_minutes
+        period_stages = [
+            period_stages_by_index[index]
+            for index in period_indices
+            if index in period_stages_by_index
+        ]
+        period_is_wake = [
+            period_stages_by_index.get(index) == "WAKE"
+            for index in period_indices
+        ]
+        sleep_period_minutes = float(len(period_indices)) * epoch_minutes
+        wake_after_sleep_onset_epochs = int(
+            sum(1 for stage in period_stages if stage == "WAKE")
         )
-        period_stages = stages[first_sleep : last_sleep + 1]
-        period_is_wake = [stage == "WAKE" for stage in period_stages]
-        sleep_period_minutes = float(len(period_stages)) * epoch_minutes
-        wake_after_sleep_onset_epochs = int(sum(period_is_wake))
         awakenings = 0
-        for previous, current in zip(period_stages, period_stages[1:]):
+        transitions = 0
+        sorted_valid_indices = [
+            index for index in period_indices if index in period_stages_by_index
+        ]
+        for previous_index, current_index in zip(sorted_valid_indices, sorted_valid_indices[1:]):
+            if current_index != previous_index + 1:
+                continue
+            previous = period_stages_by_index[previous_index]
+            current = period_stages_by_index[current_index]
             if previous != "WAKE" and current == "WAKE":
                 awakenings += 1
-        transitions = sum(
-            1
-            for previous, current in zip(period_stages, period_stages[1:])
-            if previous != current
+            if previous != current:
+                transitions += 1
+        first_rem = min(
+            (
+                int(item["epoch_index"])
+                for item in valid_items
+                if str(item[stage_column]) == "REM"
+            ),
+            default=None,
         )
-        first_rem = next(
-            (index for index, stage in enumerate(stages) if stage == "REM"),
-            None,
-        )
+        continuity_break_count = 0
+        in_break = False
+        for missing in period_missing:
+            if missing and not in_break:
+                continuity_break_count += 1
+                in_break = True
+            elif not missing:
+                in_break = False
         row.update(
             {
                 "sleep_onset_latency_proxy_minutes": float(first_sleep) * epoch_minutes,
-                "last_sleep_epoch_index": int(group.iloc[last_sleep]["epoch_index"]),
+                "last_sleep_epoch_index": int(last_sleep),
                 "sleep_period_minutes": sleep_period_minutes,
                 "sleep_period_efficiency_pct": _safe_pct(
                     sleep_minutes,
                     sleep_period_minutes,
                 ),
+                "observed_sleep_period_minutes": period_valid_minutes,
+                "observed_sleep_period_efficiency_pct": _safe_pct(
+                    sleep_minutes,
+                    period_valid_minutes,
+                ),
                 "waso_minutes": float(wake_after_sleep_onset_epochs) * epoch_minutes,
-                "terminal_wake_minutes": float(total_epochs - last_sleep - 1)
+                "terminal_wake_minutes": float(
+                    sum(
+                        1
+                        for index in range(last_sleep + 1, max_epoch + 1)
+                        if index in by_epoch
+                        and bool(by_epoch[index]["included"])
+                        and str(by_epoch[index][stage_column]) == "WAKE"
+                    )
+                )
                 * epoch_minutes,
                 "rem_latency_minutes": (
                     float(first_rem - first_sleep) * epoch_minutes
@@ -190,6 +281,8 @@ def sleep_quality_metrics(
                 * epoch_minutes,
                 "stage_transition_count": transitions,
                 "awakenings_per_sleep_hour": _safe_rate(awakenings, sleep_minutes),
+                "missing_epochs_within_sleep_period": int(sum(period_missing)),
+                "continuity_break_count": continuity_break_count,
             }
         )
         rows.append(row)

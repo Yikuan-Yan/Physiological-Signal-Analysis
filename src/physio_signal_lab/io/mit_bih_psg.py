@@ -98,6 +98,7 @@ def update_mit_bih_psg_manifest_checksums(
     *,
     output_path: str | Path | None = None,
     records: list[str] | None = None,
+    download_results: pd.DataFrame | None = None,
 ) -> Path:
     manifest_path = Path(manifest_csv)
     with manifest_path.open("r", encoding="utf-8", newline="") as f:
@@ -108,14 +109,23 @@ def update_mit_bih_psg_manifest_checksums(
         rows = [dict(row) for row in reader]
 
     wanted = set(records) if records is not None else None
+    observed_by_path: dict[str, str] = {}
+    if download_results is not None:
+        for _, item in download_results.iterrows():
+            local_path = str(item.get("local_path", ""))
+            status = str(item.get("status", ""))
+            observed = str(item.get("local_observed_sha256", item.get("sha256", "")))
+            if local_path and observed and status.startswith("downloaded"):
+                observed_by_path[Path(local_path).as_posix()] = observed
     for row in rows:
         if row.get("included", "").lower() != "true":
             continue
         if wanted is not None and row.get("record_id") not in wanted:
             continue
         local_path = Path(row["local_path"])
-        if local_path.exists():
-            row["sha256"] = sha256_file(local_path)
+        local_key = local_path.as_posix()
+        if local_path.exists() and local_key in observed_by_path:
+            row["sha256"] = observed_by_path[local_key]
 
     out = Path(output_path or manifest_path)
     out.parent.mkdir(parents=True, exist_ok=True)

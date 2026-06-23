@@ -4,7 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from physio_signal_lab.io.mit_bih_psg import build_mit_bih_psg_manifest
+from physio_signal_lab.io.mit_bih_psg import (
+    build_mit_bih_psg_manifest,
+    update_mit_bih_psg_manifest_checksums,
+    validate_mit_bih_psg_manifest,
+)
 from physio_signal_lab.mit_bih_psg import (
     _count_threshold_segments,
     _count_desaturation_events,
@@ -28,6 +32,39 @@ STAGE_MAPPING = {
     "4": "N3",
     "R": "REM",
 }
+
+
+def test_mit_bih_checksum_update_ignores_skipped_existing_files(tmp_path):
+    local = tmp_path / "slp01a.hea"
+    local.write_text("corrupted", encoding="utf-8")
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "\n".join(
+            [
+                "dataset,version,doi,license,access_date,source_url,record_id,local_path,sha256,included,exclusion_reason",
+                f"MIT-BIH PSG,1.0.0,doi,license,2026-06-23,file://source,slp01a,{local.as_posix()},,true,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    summary = pd.DataFrame(
+        [
+            {
+                "record_id": "slp01a",
+                "file_extension": "hea",
+                "local_path": local.as_posix(),
+                "status": "skipped_existing",
+                "local_observed_sha256": "observed",
+            }
+        ]
+    )
+
+    update_mit_bih_psg_manifest_checksums(manifest, download_results=summary)
+    validation = validate_mit_bih_psg_manifest(manifest)
+
+    assert validation["checksum_ok"].tolist() == [False]
+    assert "observed" not in manifest.read_text(encoding="utf-8")
 
 
 def test_parse_aux_note_maps_stage_and_event_tokens():

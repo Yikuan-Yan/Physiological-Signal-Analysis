@@ -211,6 +211,8 @@ def build_release_bundle(
         raise ValueError(f"Release name must be a single directory name: {release_name!r}")
 
     release_dir = Path(output_root) / release_name
+    if release_dir.exists():
+        raise FileExistsError(f"Release directory already exists: {release_dir}")
     release_dir.mkdir(parents=True, exist_ok=True)
 
     config_source = Path(config_path)

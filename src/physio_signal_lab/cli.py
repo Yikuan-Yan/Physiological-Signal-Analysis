@@ -270,7 +270,11 @@ def download_sleep_edf(args: argparse.Namespace) -> int:
     )
     summary_out = _ensure_parent(outputs["download_summary_csv"])
     summary.to_csv(summary_out, index=False)
-    manifest_out = update_manifest_checksums(outputs["manifest_csv"], records=records)
+    manifest_out = update_manifest_checksums(
+        outputs["manifest_csv"],
+        records=records,
+        download_results=summary,
+    )
     print(f"wrote {summary_out} rows={len(summary)}")
     print(f"updated {manifest_out}")
     print(f"bytes={int(summary['bytes'].sum())}")
@@ -363,7 +367,9 @@ def sleep_edf_clinical_education(args: argparse.Namespace) -> int:
 def download_mit_bih_psg(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     records = _csv_record_override(args.records)
-    manifest_out = write_mit_bih_psg_manifest(config)
+    manifest_out = Path(config["outputs"]["manifest_csv"])
+    if not manifest_out.exists():
+        manifest_out = write_mit_bih_psg_manifest(config)
     summary = download_mit_bih_psg_selection(
         config,
         records=records,
@@ -371,7 +377,7 @@ def download_mit_bih_psg(args: argparse.Namespace) -> int:
     )
     summary_out = _ensure_parent(config["outputs"]["download_summary_csv"])
     summary.to_csv(summary_out, index=False)
-    update_mit_bih_psg_manifest_checksums(manifest_out)
+    update_mit_bih_psg_manifest_checksums(manifest_out, download_results=summary)
     print(f"wrote {summary_out} rows={len(summary)}")
     print(f"updated {manifest_out}")
     print(f"bytes={int(summary['bytes'].sum())}")

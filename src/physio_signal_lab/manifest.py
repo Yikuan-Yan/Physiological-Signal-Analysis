@@ -83,7 +83,9 @@ def read_manifest(path: str | Path) -> list[ManifestRow]:
 
 
 def manifest_records(rows: list[ManifestRow]) -> list[str]:
-    return sorted({row.record_id for row in rows if row.record_id != "_metadata"})
+    return sorted(
+        {row.record_id for row in rows if row.record_id != "_metadata" and row.included}
+    )
 
 
 def sha256_file(path: Path) -> str:

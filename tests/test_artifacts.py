@@ -6,6 +6,7 @@ import pandas as pd
 from physio_signal_lab.evaluation.artifacts import (
     apply_strategy,
     artifact_experiment,
+    inject_ectopic_short_long,
     inject_missed_beat,
     inject_spurious_extra_beat,
     inject_timestamp_jitter,
@@ -24,6 +25,8 @@ def test_inject_missed_beat_merges_intervals_and_flags():
     assert corrupted.intervals_ms.size == 3
     assert corrupted.invalid_mask.sum() == 1
     assert math.isclose(corrupted.intervals_ms[corrupted.invalid_mask][0], 2000.0)
+    assert math.isclose(corrupted.intervals_ms.sum(), intervals.sum())
+    assert math.isclose(corrupted.beat_times_ms[-1], intervals.sum())
 
 
 def test_inject_spurious_extra_beat_splits_interval_and_flags():
@@ -37,6 +40,8 @@ def test_inject_spurious_extra_beat_splits_interval_and_flags():
     assert corrupted.intervals_ms.size == 5
     assert corrupted.invalid_mask.sum() == 2
     assert set(corrupted.intervals_ms[corrupted.invalid_mask]) == {500.0}
+    assert math.isclose(corrupted.intervals_ms.sum(), intervals.sum())
+    assert math.isclose(corrupted.beat_times_ms[-1], intervals.sum())
 
 
 def test_delete_and_interpolate_strategies():
@@ -51,6 +56,28 @@ def test_delete_and_interpolate_strategies():
     assert deleted.size < corrupted.intervals_ms.size
     assert interpolated.size == corrupted.intervals_ms.size
     assert np.isfinite(interpolated).all()
+    assert math.isclose(interpolated.sum(), corrupted.reference_span_ms)
+
+
+def test_artifact_injections_preserve_recording_span():
+    intervals = np.array([1000.0, 1010.0, 990.0, 1000.0, 1005.0])
+    for injector, kwargs in [
+        (inject_missed_beat, {}),
+        (inject_spurious_extra_beat, {}),
+        (inject_timestamp_jitter, {"jitter_ms": 50.0}),
+        (inject_ectopic_short_long, {"shift_fraction": 0.3}),
+    ]:
+        corrupted = injector(
+            intervals,
+            rate=0.4,
+            rng=np.random.default_rng(7),
+            **kwargs,
+        )
+        assert np.all(corrupted.intervals_ms > 0)
+        assert math.isclose(corrupted.intervals_ms.sum(), intervals.sum())
+        repaired = apply_strategy(corrupted, strategy="interpolate_flagged_intervals")
+        assert np.all(repaired > 0)
+        assert math.isclose(repaired.sum(), intervals.sum())
 
 
 def test_artifact_experiment_outputs_expected_rows():

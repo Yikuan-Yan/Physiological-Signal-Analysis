@@ -1,11 +1,23 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
 
+from physio_signal_lab.manifest import ManifestValidation, validate_manifest
+
+
+GateStatus = Literal["pass", "fail", "warning", "not_run"]
+
+
+@dataclass(frozen=True)
+class RunGateResult:
+    name: str
+    status: GateStatus
+    evidence: str
 
 def _fmt(value: float | int, digits: int = 3) -> str:
     if isinstance(value, (int, np.integer)):
@@ -94,6 +106,7 @@ def _artifact_rows(artifact_summary: pd.DataFrame) -> list[dict[str, str]]:
 
 
 def _gate_rows(
+    manifest_validation: ManifestValidation,
     inventory: pd.DataFrame,
     peak: pd.DataFrame,
     intervals: pd.DataFrame,
@@ -102,60 +115,81 @@ def _gate_rows(
     uncertainty: pd.DataFrame,
 ) -> list[dict[str, str]]:
     primary = peak[peak["tolerance_ms"] == 50.0]
-    return [
-        {
-            "gate": "Fantasia 40 records readable and inventoried",
-            "status": "pass" if len(inventory) == 40 else "fail",
-            "evidence": f"{len(inventory)} inventory rows",
-        },
-        {
-            "gate": "Manifest and local files validated",
-            "status": "pass",
-            "evidence": "validate-data reported 0 missing files and 0 checksum mismatches",
-        },
-        {
-            "gate": "R-peak detector evaluated against reference annotation",
-            "status": "pass" if len(primary) == 40 else "fail",
-            "evidence": f"40 records at 50 ms; median F1 {_fmt(primary['f1'].median(), 4)}",
-        },
-        {
-            "gate": "RR and NN intervals separated with exclusion reasons",
-            "status": "pass" if {"is_nn", "exclusion_reason"} <= set(intervals.columns) else "fail",
-            "evidence": (
-                f"{int(intervals['is_nn'].sum())} NN, "
-                f"{int((~intervals['is_nn']).sum())} excluded"
+    gates = [
+        RunGateResult(
+            "Fantasia 40 records readable and inventoried",
+            "pass" if len(inventory) == 40 else "fail",
+            f"{len(inventory)} inventory rows",
+        ),
+        RunGateResult(
+            "Manifest and local files validated",
+            "pass" if manifest_validation.ok else "fail",
+            (
+                f"{len(manifest_validation.missing_files)} missing files; "
+                f"{len(manifest_validation.checksum_mismatches)} checksum mismatches; "
+                f"{len(manifest_validation.missing_record_files)} missing record files"
             ),
-        },
-        {
-            "gate": "Four artifact classes quantified",
-            "status": "pass" if artifacts["artifact_type"].nunique() == 4 else "fail",
-            "evidence": f"{len(artifacts)} artifact scenarios",
-        },
-        {
-            "gate": "Frequency analysis compares Welch and Lomb-Scargle",
-            "status": "pass"
-            if frequency["welch_lf_power_ms2"].notna().sum() > 0
+        ),
+        RunGateResult(
+            "R-peak detector evaluated against reference annotation",
+            "pass" if len(primary) == 40 else "fail",
+            f"{len(primary)} records at 50 ms; median F1 {_fmt(primary['f1'].median(), 4)}",
+        ),
+        RunGateResult(
+            "RR and NN intervals separated with exclusion reasons",
+            "pass" if {"is_nn", "exclusion_reason"} <= set(intervals.columns) and not intervals.empty else "fail",
+            (
+                f"{int(intervals['is_nn'].sum()) if 'is_nn' in intervals else 0} NN, "
+                f"{int((~intervals['is_nn']).sum()) if 'is_nn' in intervals else 0} excluded"
+            ),
+        ),
+        RunGateResult(
+            "Four artifact classes quantified",
+            "pass" if "artifact_type" in artifacts and artifacts["artifact_type"].nunique() == 4 else "fail",
+            f"{len(artifacts)} artifact scenarios",
+        ),
+        RunGateResult(
+            "Frequency analysis compares Welch and Lomb-Scargle",
+            "pass"
+            if "welch_lf_power_ms2" in frequency
+            and "lomb_lf_hf_ratio" in frequency
+            and frequency["welch_lf_power_ms2"].notna().sum() > 0
             and frequency["lomb_lf_hf_ratio"].notna().sum() > 0
             else "fail",
-            "evidence": (
-                f"{int(frequency['welch_lf_power_ms2'].notna().sum())} valid frequency windows"
+            (
+                f"{int(frequency['welch_lf_power_ms2'].notna().sum()) if 'welch_lf_power_ms2' in frequency else 0} "
+                "valid frequency windows"
             ),
-        },
-        {
-            "gate": "Uncertainty reported at record level",
-            "status": "pass" if len(uncertainty) >= 9 else "fail",
-            "evidence": f"{len(uncertainty)} bootstrap CI rows",
-        },
-        {
-            "gate": "No diagnostic or personal baseline claims",
-            "status": "pass",
-            "evidence": "Report wording restricted to method and reproducibility claims",
-        },
+        ),
+        RunGateResult(
+            "Uncertainty reported at record level",
+            "pass" if len(uncertainty) >= 9 else "fail",
+            f"{len(uncertainty)} bootstrap CI rows",
+        ),
+        RunGateResult(
+            "No diagnostic or personal baseline claims",
+            "pass",
+            "Report wording restricted to method and reproducibility claims",
+        ),
     ]
+    return [
+        {"gate": gate.name, "status": gate.status, "evidence": gate.evidence}
+        for gate in gates
+    ]
+
+
+def _gate_decision(gates: list[dict[str, str]]) -> str:
+    statuses = {str(row["status"]) for row in gates}
+    if "fail" in statuses:
+        return "fail"
+    if {"warning", "not_run"} & statuses:
+        return "warning"
+    return "pass"
 
 
 def build_hrv_core_report(config: dict[str, Any]) -> str:
     outputs = config["outputs"]
+    manifest_validation = validate_manifest(config["dataset"]["manifest"])
     inventory = _read_csv(outputs["inventory_csv"])
     peak = _read_csv(outputs["peak_benchmark_csv"])
     intervals = _read_csv(outputs["reference_intervals_csv"])
@@ -170,6 +204,21 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
     valid_frequency = frequency["welch_lf_power_ms2"].notna()
     excluded = intervals[~intervals["is_nn"]]
     nonfinite_records = inventory[inventory["ecg_nonfinite_count"] > 0]
+    gate_rows = _gate_rows(
+        manifest_validation,
+        inventory,
+        peak,
+        intervals,
+        artifacts,
+        frequency,
+        uncertainty,
+    )
+    decision = _gate_decision(gate_rows)
+    decision_text = {
+        "pass": "pass the current public-data HRV core implementation gate for method-development purposes.",
+        "warning": "complete with warnings for the current public-data HRV core implementation gate.",
+        "fail": "fail the current public-data HRV core implementation gate until required gates are fixed.",
+    }[decision]
 
     lines: list[str] = [
         "# HRV Core Report",
@@ -214,7 +263,12 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
         "uv run pytest -q",
         "```",
         "",
-        "The current run produced 0 missing files and 0 checksum mismatches in `validate-data`.",
+        (
+            "The current manifest validation produced "
+            f"{len(manifest_validation.missing_files)} missing files, "
+            f"{len(manifest_validation.checksum_mismatches)} checksum mismatches, and "
+            f"{len(manifest_validation.missing_record_files)} missing record files."
+        ),
         "",
         "## R-Peak Detector Benchmark",
         "",
@@ -301,11 +355,11 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
         "## Core Gate Decision",
         "",
         _markdown_table(
-            _gate_rows(inventory, peak, intervals, artifacts, frequency, uncertainty),
+            gate_rows,
             ["gate", "status", "evidence"],
         ),
         "",
-        "**Decision:** pass the current public-data HRV core implementation gate for method-development purposes.",
+        f"**Decision:** {decision_text}",
         "",
         "## Limitations",
         "",

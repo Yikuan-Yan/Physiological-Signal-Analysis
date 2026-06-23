@@ -21,6 +21,44 @@ class CorruptedIntervals:
     intervals_ms: np.ndarray
     invalid_mask: np.ndarray
     injected_events: int
+    beat_times_ms: np.ndarray
+    reference_span_ms: float
+
+
+def _intervals_to_beats(intervals_ms: np.ndarray) -> np.ndarray:
+    intervals = np.asarray(intervals_ms, dtype=np.float64)
+    if intervals.ndim != 1:
+        raise ValueError("intervals_ms must be one-dimensional")
+    if np.any(intervals <= 0) or not np.isfinite(intervals).all():
+        raise ValueError("intervals_ms must be finite and positive")
+    return np.concatenate([[0.0], np.cumsum(intervals)])
+
+
+def _from_beats(
+    beat_times_ms: np.ndarray,
+    invalid_mask: np.ndarray,
+    *,
+    injected_events: int,
+    reference_span_ms: float,
+) -> CorruptedIntervals:
+    beats = np.asarray(beat_times_ms, dtype=np.float64)
+    if beats.ndim != 1 or beats.size < 2:
+        raise ValueError("beat_times_ms must contain at least two timestamps")
+    if not np.isfinite(beats).all():
+        raise ValueError("beat_times_ms must be finite")
+    if np.any(np.diff(beats) <= 0):
+        raise ValueError("beat_times_ms must be strictly increasing")
+    intervals = np.diff(beats)
+    mask = np.asarray(invalid_mask, dtype=bool)
+    if intervals.shape != mask.shape:
+        raise ValueError("invalid_mask must match interval count")
+    return CorruptedIntervals(
+        intervals_ms=intervals,
+        invalid_mask=mask,
+        injected_events=injected_events,
+        beat_times_ms=beats,
+        reference_span_ms=float(reference_span_ms),
+    )
 
 
 def stable_seed(base_seed: int, *parts: object) -> int:
@@ -66,26 +104,25 @@ def inject_missed_beat(
     rate: float,
     rng: np.random.Generator,
 ) -> CorruptedIntervals:
-    intervals = np.asarray(intervals_ms, dtype=np.float64)
+    reference_beats = _intervals_to_beats(intervals_ms)
+    intervals = np.diff(reference_beats)
     count = min(_event_count(intervals.size, rate), max(0, intervals.size - 1))
-    starts = _non_overlapping_starts(rng, max_start=intervals.size - 2, count=count)
-    start_set = set(starts)
-    corrupted: list[float] = []
-    invalid: list[bool] = []
-    i = 0
-    while i < intervals.size:
-        if i in start_set:
-            corrupted.append(float(intervals[i] + intervals[i + 1]))
-            invalid.append(True)
-            i += 2
-        else:
-            corrupted.append(float(intervals[i]))
-            invalid.append(False)
-            i += 1
-    return CorruptedIntervals(
-        np.asarray(corrupted, dtype=np.float64),
+    selected_boundaries = set(
+        int(index)
+        for index in rng.choice(np.arange(1, intervals.size), size=count, replace=False)
+    )
+    kept_original_indices = [
+        index for index in range(reference_beats.size) if index not in selected_boundaries
+    ]
+    corrupted_beats = reference_beats[kept_original_indices]
+    invalid = []
+    for left, right in zip(kept_original_indices, kept_original_indices[1:]):
+        invalid.append(any(left < boundary < right for boundary in selected_boundaries))
+    return _from_beats(
+        corrupted_beats,
         np.asarray(invalid, dtype=bool),
-        len(starts),
+        injected_events=len(selected_boundaries),
+        reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
     )
 
 
@@ -95,22 +132,26 @@ def inject_spurious_extra_beat(
     rate: float,
     rng: np.random.Generator,
 ) -> CorruptedIntervals:
-    intervals = np.asarray(intervals_ms, dtype=np.float64)
+    reference_beats = _intervals_to_beats(intervals_ms)
+    intervals = np.diff(reference_beats)
     count = min(_event_count(intervals.size, rate), intervals.size)
     selected = set(rng.choice(intervals.size, size=count, replace=False).tolist())
-    corrupted: list[float] = []
-    invalid: list[bool] = []
+    beat_entries: list[tuple[float, bool]] = [(float(reference_beats[0]), False)]
     for i, interval in enumerate(intervals):
+        left = float(reference_beats[i])
+        right = float(reference_beats[i + 1])
         if i in selected:
-            corrupted.extend([float(interval / 2.0), float(interval / 2.0)])
-            invalid.extend([True, True])
-        else:
-            corrupted.append(float(interval))
-            invalid.append(False)
-    return CorruptedIntervals(
-        np.asarray(corrupted, dtype=np.float64),
+            beat_entries.append((left + float(interval) / 2.0, True))
+        beat_entries.append((right, False))
+    invalid = [
+        beat_entries[i][1] or beat_entries[i + 1][1]
+        for i in range(len(beat_entries) - 1)
+    ]
+    return _from_beats(
+        np.asarray([value for value, _ in beat_entries], dtype=np.float64),
         np.asarray(invalid, dtype=bool),
-        len(selected),
+        injected_events=len(selected),
+        reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
     )
 
 
@@ -121,11 +162,18 @@ def inject_timestamp_jitter(
     jitter_ms: float,
     rng: np.random.Generator,
 ) -> CorruptedIntervals:
-    intervals = np.asarray(intervals_ms, dtype=np.float64).copy()
+    reference_beats = _intervals_to_beats(intervals_ms)
+    intervals = np.diff(reference_beats)
     if intervals.size < 2:
-        return CorruptedIntervals(intervals, np.zeros(intervals.size, dtype=bool), 0)
+        return _from_beats(
+            reference_beats,
+            np.zeros(intervals.size, dtype=bool),
+            injected_events=0,
+            reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
+        )
     count = min(_event_count(intervals.size, rate), intervals.size - 1)
     boundaries = rng.choice(np.arange(1, intervals.size), size=count, replace=False)
+    corrupted_beats = reference_beats.copy()
     invalid = np.zeros(intervals.size, dtype=bool)
     for boundary in boundaries:
         delta = float(rng.uniform(-jitter_ms, jitter_ms))
@@ -133,10 +181,14 @@ def inject_timestamp_jitter(
         right = boundary
         limit = 0.45 * min(intervals[left], intervals[right])
         delta = float(np.clip(delta, -limit, limit))
-        intervals[left] += delta
-        intervals[right] -= delta
+        corrupted_beats[boundary] += delta
         invalid[[left, right]] = True
-    return CorruptedIntervals(intervals, invalid, int(boundaries.size))
+    return _from_beats(
+        corrupted_beats,
+        invalid,
+        injected_events=int(boundaries.size),
+        reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
+    )
 
 
 def inject_ectopic_short_long(
@@ -146,20 +198,31 @@ def inject_ectopic_short_long(
     shift_fraction: float,
     rng: np.random.Generator,
 ) -> CorruptedIntervals:
-    intervals = np.asarray(intervals_ms, dtype=np.float64).copy()
+    reference_beats = _intervals_to_beats(intervals_ms)
+    intervals = np.diff(reference_beats)
     if intervals.size < 2:
-        return CorruptedIntervals(intervals, np.zeros(intervals.size, dtype=bool), 0)
+        return _from_beats(
+            reference_beats,
+            np.zeros(intervals.size, dtype=bool),
+            injected_events=0,
+            reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
+        )
     count = min(_event_count(intervals.size, rate), intervals.size - 1)
     boundaries = rng.choice(np.arange(1, intervals.size), size=count, replace=False)
+    corrupted_beats = reference_beats.copy()
     invalid = np.zeros(intervals.size, dtype=bool)
     for boundary in boundaries:
         left = boundary - 1
         right = boundary
         shift = shift_fraction * min(intervals[left], intervals[right])
-        intervals[left] -= shift
-        intervals[right] += shift
+        corrupted_beats[boundary] -= shift
         invalid[[left, right]] = True
-    return CorruptedIntervals(intervals, invalid, int(boundaries.size))
+    return _from_beats(
+        corrupted_beats,
+        invalid,
+        injected_events=int(boundaries.size),
+        reference_span_ms=float(reference_beats[-1] - reference_beats[0]),
+    )
 
 
 def inject_artifact(
@@ -198,7 +261,11 @@ def apply_strategy(corrupted: CorruptedIntervals, *, strategy: str) -> np.ndarra
     if strategy == "delete_flagged_intervals":
         return corrupted.intervals_ms[~corrupted.invalid_mask]
     if strategy == "interpolate_flagged_intervals":
-        return flagged_interpolate(corrupted.intervals_ms, corrupted.invalid_mask)
+        repaired = flagged_interpolate(corrupted.intervals_ms, corrupted.invalid_mask)
+        repaired_sum = float(np.sum(repaired))
+        if repaired.size and repaired_sum > 0:
+            repaired = repaired * (corrupted.reference_span_ms / repaired_sum)
+        return repaired
     raise ValueError(f"Unsupported strategy: {strategy}")
 
 

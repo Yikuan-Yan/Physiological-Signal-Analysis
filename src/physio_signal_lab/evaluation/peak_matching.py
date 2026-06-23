@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import math
 
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 
 @dataclass(frozen=True)
@@ -64,31 +65,94 @@ def match_peaks(
 
     matched_reference: list[int] = []
     matched_detected: list[int] = []
-    false_negative: list[int] = []
-    false_positive: list[int] = []
-    timing_errors: list[int] = []
 
-    i = 0
-    j = 0
-    while i < reference.size and j < detected.size:
-        diff = int(detected[j] - reference[i])
-        if abs(diff) <= tolerance_samples:
-            matched_reference.append(i)
-            matched_detected.append(j)
-            timing_errors.append(diff)
-            i += 1
-            j += 1
-        elif detected[j] < reference[i] - tolerance_samples:
-            false_positive.append(j)
-            j += 1
+    points = sorted(
+        [(int(value), "reference", int(index)) for index, value in enumerate(reference)]
+        + [(int(value), "detected", int(index)) for index, value in enumerate(detected)]
+    )
+    components: list[list[tuple[int, str, int]]] = []
+    current: list[tuple[int, str, int]] = []
+    current_end: int | None = None
+    for point in points:
+        value = point[0]
+        if current_end is None or value > current_end:
+            if current:
+                components.append(current)
+            current = [point]
+            current_end = value + tolerance_samples
         else:
-            false_negative.append(i)
-            i += 1
+            current.append(point)
+            current_end = max(current_end, value + tolerance_samples)
+    if current:
+        components.append(current)
 
-    if i < reference.size:
-        false_negative.extend(range(i, reference.size))
-    if j < detected.size:
-        false_positive.extend(range(j, detected.size))
+    for component in components:
+        ref_indices = [index for _, kind, index in component if kind == "reference"]
+        det_indices = [index for _, kind, index in component if kind == "detected"]
+        if not ref_indices or not det_indices:
+            continue
+        r = len(ref_indices)
+        d = len(det_indices)
+        if r == 1 and d == 1:
+            ref_index = ref_indices[0]
+            det_index = det_indices[0]
+            if abs(int(detected[det_index] - reference[ref_index])) <= tolerance_samples:
+                matched_reference.append(ref_index)
+                matched_detected.append(det_index)
+            continue
+        if r == 1:
+            ref_index = ref_indices[0]
+            best_det = min(
+                det_indices,
+                key=lambda det_index: abs(int(detected[det_index] - reference[ref_index])),
+            )
+            if abs(int(detected[best_det] - reference[ref_index])) <= tolerance_samples:
+                matched_reference.append(ref_index)
+                matched_detected.append(best_det)
+            continue
+        if d == 1:
+            det_index = det_indices[0]
+            best_ref = min(
+                ref_indices,
+                key=lambda ref_index: abs(int(detected[det_index] - reference[ref_index])),
+            )
+            if abs(int(detected[det_index] - reference[best_ref])) <= tolerance_samples:
+                matched_reference.append(best_ref)
+                matched_detected.append(det_index)
+            continue
+        size = r + d
+        match_priority = float((tolerance_samples + 1) * (size + 1))
+        blocked = match_priority * 4.0
+        cost = np.zeros((size, size), dtype=np.float64)
+        cost[:r, :d] = blocked
+        cost[:r, d:] = match_priority
+        cost[r:, :d] = match_priority
+        for local_r, ref_index in enumerate(ref_indices):
+            for local_d, det_index in enumerate(det_indices):
+                error = abs(int(detected[det_index] - reference[ref_index]))
+                if error <= tolerance_samples:
+                    cost[local_r, local_d] = float(error)
+        row_ind, col_ind = linear_sum_assignment(cost)
+        for row, col in zip(row_ind, col_ind):
+            if row < r and col < d and cost[row, col] <= tolerance_samples:
+                matched_reference.append(ref_indices[row])
+                matched_detected.append(det_indices[col])
+
+    matched_pairs = sorted(zip(matched_reference, matched_detected))
+    matched_reference = [ref_index for ref_index, _ in matched_pairs]
+    matched_detected = [det_index for _, det_index in matched_pairs]
+    matched_reference_set = set(matched_reference)
+    matched_detected_set = set(matched_detected)
+    false_negative = [
+        index for index in range(reference.size) if index not in matched_reference_set
+    ]
+    false_positive = [
+        index for index in range(detected.size) if index not in matched_detected_set
+    ]
+    timing_errors = [
+        int(detected[det_index] - reference[ref_index])
+        for ref_index, det_index in matched_pairs
+    ]
 
     return PeakMatchResult(
         tolerance_samples=tolerance_samples,

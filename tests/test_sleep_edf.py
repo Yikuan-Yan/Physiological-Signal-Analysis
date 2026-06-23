@@ -20,8 +20,11 @@ from physio_signal_lab.io.sleep_edf import (
 from physio_signal_lab.evaluation.sleep_staging import (
     align_model_predictions,
     expand_stage_annotations,
+    global_majority_stage_predictions,
     majority_stage_predictions,
+    per_record_majority_oracle_predictions,
     map_yasa_stage,
+    paths_from_selection,
     parse_sleep_stage_description,
     sleep_stage_metrics,
 )
@@ -171,6 +174,52 @@ def test_expand_stage_annotations_maps_and_crops_to_signal_duration():
     assert labels["epoch_index"].tolist() == list(range(6))
     assert labels["mapped_stage"].tolist() == ["WAKE", "WAKE", "N3", "", "", "REM"]
     assert labels["included"].tolist() == [True, True, True, False, False, True]
+    assert labels["duration_seconds"].tolist() == [30.0] * 6
+
+
+def test_expand_stage_annotations_preserves_gaps_and_rejects_bad_onsets():
+    labels = expand_stage_annotations(
+        pd.DataFrame(
+            [
+                {"onset": 0.0, "duration": 30.0, "description": "Sleep stage W"},
+                {"onset": 90.0, "duration": 30.0, "description": "Sleep stage 2"},
+            ]
+        ),
+        record_id="SC4001",
+        signal_duration_seconds=120.0,
+        epoch_seconds=30.0,
+    )
+    assert labels["epoch_index"].tolist() == [0, 1, 2, 3]
+    assert labels["included"].tolist() == [True, False, False, True]
+    assert labels["missing_or_excluded_reason"].tolist() == [
+        "",
+        "missing_annotation",
+        "missing_annotation",
+        "",
+    ]
+
+    with pytest.raises(ValueError, match="not aligned"):
+        expand_stage_annotations(
+            pd.DataFrame(
+                [{"onset": 15.0, "duration": 30.0, "description": "Sleep stage W"}]
+            ),
+            record_id="SC4001",
+            signal_duration_seconds=60.0,
+            epoch_seconds=30.0,
+        )
+
+    with pytest.raises(ValueError, match="Overlapping"):
+        expand_stage_annotations(
+            pd.DataFrame(
+                [
+                    {"onset": 0.0, "duration": 60.0, "description": "Sleep stage W"},
+                    {"onset": 30.0, "duration": 30.0, "description": "Sleep stage 1"},
+                ]
+            ),
+            record_id="SC4001",
+            signal_duration_seconds=90.0,
+            epoch_seconds=30.0,
+        )
 
 
 def test_parse_sleep_stage_description_rejects_non_stage_annotations():
@@ -180,7 +229,7 @@ def test_parse_sleep_stage_description_rejects_non_stage_annotations():
         parse_sleep_stage_description("Lights off")
 
 
-def test_majority_baseline_metrics_are_record_and_all_level():
+def test_majority_baselines_distinguish_oracle_and_global():
     labels = pd.DataFrame(
         [
             {"record_id": "SC4001", "mapped_stage": "WAKE", "included": True},
@@ -192,12 +241,18 @@ def test_majority_baseline_metrics_are_record_and_all_level():
         ]
     )
 
-    predictions = majority_stage_predictions(labels)
-    metrics = sleep_stage_metrics(predictions, model_name="majority")
+    predictions = per_record_majority_oracle_predictions(labels)
+    global_predictions = global_majority_stage_predictions(labels)
+    compatibility_predictions = majority_stage_predictions(labels)
+    metrics = sleep_stage_metrics(predictions, model_name="per_record_majority_oracle")
 
     assert predictions[predictions["record_id"] == "SC4001"]["predicted_stage"].unique().tolist() == [
         "WAKE"
     ]
+    assert set(predictions["baseline_type"]) == {"per_record_majority_oracle"}
+    assert set(global_predictions["baseline_type"]) == {"global_majority"}
+    assert set(global_predictions["predicted_stage"]) == {"WAKE"}
+    assert compatibility_predictions.equals(predictions)
     assert set(metrics["record_id"]) == {"SC4001", "SC4011", "all"}
     overall = metrics[metrics["record_id"] == "all"].iloc[0]
     assert overall["epoch_count"] == 5
@@ -231,6 +286,33 @@ def test_yasa_stage_mapping_and_alignment():
     aligned = align_model_predictions(labels, predictions, model_name="yasa")
     assert aligned["predicted_stage"].tolist() == ["WAKE", "N2"]
     assert aligned["model"].tolist() == ["yasa", "yasa"]
+
+
+def test_paths_from_selection_requires_exact_included_records():
+    selection = pd.DataFrame(
+        [
+            {
+                "recording_id": "SC4001",
+                "psg_local_path": "a.edf",
+                "hypnogram_local_path": "a-hyp.edf",
+                "included": "true",
+            },
+            {
+                "recording_id": "SC4011",
+                "psg_local_path": "b.edf",
+                "hypnogram_local_path": "b-hyp.edf",
+                "included": "false",
+            },
+        ]
+    )
+
+    assert [item.record_id for item in paths_from_selection(selection, ["SC4001"])] == ["SC4001"]
+    with pytest.raises(ValueError, match="not selected"):
+        paths_from_selection(selection, ["SC4001", "SC9991"])
+    with pytest.raises(ValueError, match="not selected"):
+        paths_from_selection(selection, ["SC4011"])
+    with pytest.raises(ValueError, match="At least one"):
+        paths_from_selection(selection, [])
 
 
 def test_yasa_stage_mapping_rejects_unknown_label():
@@ -299,8 +381,12 @@ def test_sleep_quality_metrics_compute_continuity_from_stage_epochs():
     )
     row = metrics.iloc[0]
     assert row["included_minutes"] == pytest.approx(5.0)
+    assert row["elapsed_minutes"] == pytest.approx(5.5)
+    assert row["missing_epoch_count"] == 1
+    assert row["missing_minutes"] == pytest.approx(0.5)
     assert row["total_sleep_time_minutes"] == pytest.approx(2.0)
-    assert row["recording_sleep_efficiency_pct"] == pytest.approx(40.0)
+    assert row["recording_sleep_efficiency_pct"] == pytest.approx(100.0 * 2.0 / 5.5)
+    assert row["observed_recording_sleep_efficiency_pct"] == pytest.approx(40.0)
     assert row["sleep_onset_latency_proxy_minutes"] == pytest.approx(1.0)
     assert row["sleep_period_minutes"] == pytest.approx(2.5)
     assert row["sleep_period_efficiency_pct"] == pytest.approx(80.0)
@@ -310,8 +396,36 @@ def test_sleep_quality_metrics_compute_continuity_from_stage_epochs():
     assert row["awakening_count"] == 1
     assert row["longest_wake_bout_after_sleep_onset_minutes"] == pytest.approx(0.5)
     assert row["stage_transition_count"] == 4
+    assert row["missing_epochs_within_sleep_period"] == 0
+    assert row["continuity_break_count"] == 0
     assert row["n3_pct_tst"] == pytest.approx(25.0)
     assert row["rem_pct_tst"] == pytest.approx(25.0)
+
+
+def test_sleep_quality_metrics_do_not_cross_gap_transitions():
+    epochs = pd.DataFrame(
+        [
+            {"record_id": "SC4001", "epoch_index": 0, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 1, "mapped_stage": "N2", "included": True},
+            {"record_id": "SC4001", "epoch_index": 2, "mapped_stage": "", "included": "false"},
+            {"record_id": "SC4001", "epoch_index": 3, "mapped_stage": "WAKE", "included": True},
+            {"record_id": "SC4001", "epoch_index": 4, "mapped_stage": "REM", "included": True},
+        ]
+    )
+
+    row = sleep_quality_metrics(
+        epochs,
+        stage_column="mapped_stage",
+        source="reference",
+        epoch_seconds=30.0,
+    ).iloc[0]
+
+    assert row["sleep_period_minutes"] == pytest.approx(2.0)
+    assert row["observed_sleep_period_minutes"] == pytest.approx(1.5)
+    assert row["missing_epochs_within_sleep_period"] == 1
+    assert row["continuity_break_count"] == 1
+    assert row["awakening_count"] == 0
+    assert row["stage_transition_count"] == 1
 
 
 def test_clinical_indicators_mark_disease_domains_as_not_diagnosed():
@@ -443,9 +557,40 @@ def test_download_updates_and_validates_manifest_checksums(tmp_path):
         encoding="utf-8",
     )
 
-    update_manifest_checksums(manifest, records=["SC4001"])
+    update_manifest_checksums(manifest, records=["SC4001"], download_results=pd.DataFrame([result]))
     validation = validate_sleep_edf_manifest(manifest, records=["SC4001"])
     assert validation["exists"].tolist() == [True]
     assert validation["checksum_ok"].tolist() == [True]
     updated_manifest = manifest.read_text(encoding="utf-8")
     assert result["sha256"] in updated_manifest
+
+
+def test_skipped_existing_download_does_not_update_expected_checksum(tmp_path):
+    source = tmp_path / "source.edf"
+    source.write_bytes(b"correct bytes")
+    local = tmp_path / "raw" / "SC4001E0-PSG.edf"
+    local.parent.mkdir(parents=True)
+    local.write_bytes(b"corrupted bytes")
+
+    result = download_file(source.resolve().as_uri(), local)
+    assert result["status"] == "skipped_existing"
+    assert result["sha256"] == ""
+    assert result["local_observed_sha256"]
+
+    manifest = tmp_path / "manifest.csv"
+    manifest.write_text(
+        "\n".join(
+            [
+                "dataset,version,doi,license,access_date,source_url,record_id,local_path,sha256,included,exclusion_reason",
+                f"Sleep-EDF,1.0.0,doi,license,2026-06-22,{source.resolve().as_uri()},SC4001,{local.as_posix()},,true,",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    update_manifest_checksums(manifest, records=["SC4001"], download_results=pd.DataFrame([result]))
+    validation = validate_sleep_edf_manifest(manifest, records=["SC4001"])
+
+    assert validation["exists"].tolist() == [True]
+    assert validation["checksum_ok"].tolist() == [False]
+    assert result["local_observed_sha256"] not in manifest.read_text(encoding="utf-8")

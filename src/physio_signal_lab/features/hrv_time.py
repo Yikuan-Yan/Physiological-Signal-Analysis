@@ -50,10 +50,13 @@ def hrv_to_dict(metrics: TimeDomainHrv, *, prefix: str = "") -> dict[str, float 
 
 
 def flagged_interpolate(interval_ms: np.ndarray, invalid_mask: np.ndarray) -> np.ndarray:
-    intervals = finite_1d(interval_ms, name="interval_ms")
+    intervals = np.asarray(interval_ms, dtype=np.float64)
+    if intervals.ndim != 1:
+        raise ValueError("interval_ms must be one-dimensional")
     mask = np.asarray(invalid_mask, dtype=bool)
     if intervals.shape != mask.shape:
         raise ValueError("interval_ms and invalid_mask must have the same shape")
+    mask = mask | ~np.isfinite(intervals)
     if not mask.any():
         return intervals.copy()
     if mask.all():

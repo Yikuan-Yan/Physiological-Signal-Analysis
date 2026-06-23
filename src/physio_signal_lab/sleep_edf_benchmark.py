@@ -9,7 +9,7 @@ import pandas as pd
 
 from physio_signal_lab.evaluation.sleep_staging import (
     align_model_predictions,
-    majority_stage_predictions,
+    global_majority_stage_predictions,
     paths_from_selection,
     read_sleep_edf_epoch_labels,
     sleep_stage_metrics,
@@ -69,7 +69,7 @@ def build_sleep_edf_pilot_report(
 ) -> str:
     scope = clean_output_prefix(output_prefix).replace("_", " ")
     overall = metrics[metrics["record_id"] == "all"].iloc[0]
-    metric_tables = [("majority_stage_baseline", metrics)]
+    metric_tables = [("global_majority_stage_baseline", metrics)]
     if yasa_metrics is not None:
         metric_tables.append(("yasa_sleepstaging", yasa_metrics))
 
@@ -154,7 +154,7 @@ def build_sleep_edf_pilot_report(
         "",
         (
             "This benchmark verifies EDF reading, 30 s hypnogram expansion, "
-            "R&K-to-five-class mapping, and a majority-stage baseline on the downloaded "
+            "R&K-to-five-class mapping, and a global majority-stage baseline on the downloaded "
             "Sleep Cassette records."
         ),
         "",
@@ -194,7 +194,7 @@ def build_sleep_edf_pilot_report(
         ),
         "",
         f"- Overall included epochs: {int(overall['epoch_count'])}.",
-        f"- Overall majority-stage accuracy: {_fmt(overall['accuracy'])}.",
+        f"- Overall global-majority accuracy: {_fmt(overall['accuracy'])}.",
         f"- Overall balanced accuracy: {_fmt(overall['balanced_accuracy'])}.",
         f"- Overall macro-F1: {_fmt(overall['macro_f1'])}.",
         f"- Overall Cohen's kappa: {_fmt(overall['cohen_kappa'])}.",
@@ -245,8 +245,8 @@ def run_sleep_edf_pilot_benchmark(
 
     labels_df = pd.concat(labels_parts, ignore_index=True)
     metadata_df = pd.DataFrame(metadata_rows)
-    predictions = majority_stage_predictions(labels_df)
-    metrics = sleep_stage_metrics(predictions, model_name="majority_stage_baseline")
+    predictions = global_majority_stage_predictions(labels_df)
+    metrics = sleep_stage_metrics(predictions, model_name="global_majority_stage_baseline")
     summary = stage_summary(labels_df, metadata_df)
     yasa_predictions_out = None
     yasa_probabilities_out = None

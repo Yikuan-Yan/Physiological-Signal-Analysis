@@ -25,3 +25,9 @@ def test_flagged_interpolate_all_invalid_returns_empty():
     intervals = np.array([500.0, 500.0])
     repaired = flagged_interpolate(intervals, np.array([True, True]))
     assert repaired.size == 0
+
+
+def test_flagged_interpolate_treats_nan_as_invalid_in_original_index_space():
+    intervals = np.array([1000.0, np.nan, 1020.0])
+    repaired = flagged_interpolate(intervals, np.array([False, True, False]))
+    assert repaired.tolist() == [1000.0, 1010.0, 1020.0]

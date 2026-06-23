@@ -19,13 +19,13 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4011 | reference_hypnogram | 473.0 | 96.2 | 18.5 | 359.0 | 119.5 | 11.1 | 18.0 | 13 |
 | SC4021 | reference_hypnogram | 448.5 | 99.1 | 4.0 | 364.5 | 79.5 | 10.6 | 18.2 | 7 |
 | SC4031 | reference_hypnogram | 406.0 | 97.6 | 10.0 | 435.5 | 105.5 | 7.0 | 25.7 | 12 |
-| SC4041 | reference_hypnogram | 517.5 | 92.8 | 40.0 | 406.0 | 72.0 | 5.1 | 18.9 | 28 |
+| SC4041 | reference_hypnogram | 517.5 | 92.7 | 40.0 | 406.0 | 72.0 | 5.1 | 18.9 | 28 |
 | SC4051 | reference_hypnogram | 232.0 | 84.1 | 44.0 | 644.5 | 82.0 | 29.1 | 14.7 | 10 |
 | SC4061 | reference_hypnogram | 350.5 | 97.0 | 11.0 | 467.5 | 94.5 | 19.4 | 14.6 | 11 |
 | SC4071 | reference_hypnogram | 426.0 | 99.5 | 2.0 | 466.5 | 58.5 | 19.0 | 23.2 | 3 |
 | SC4081 | reference_hypnogram | 405.5 | 80.0 | 101.5 | 401.5 | 225.5 | 43.2 | 16.2 | 7 |
-| SC4091 | reference_hypnogram | 491.0 | 97.0 | 15.0 | 402.5 | 54.0 | 17.3 | 23.6 | 6 |
-| SC4101 | reference_hypnogram | 474.5 | 96.4 | 17.5 | 381.0 | 83.5 | 0.6 | 21.8 | 12 |
+| SC4091 | reference_hypnogram | 491.0 | 96.0 | 15.0 | 402.5 | 54.0 | 17.3 | 23.6 | 6 |
+| SC4101 | reference_hypnogram | 474.5 | 96.3 | 17.5 | 381.0 | 83.5 | 0.6 | 21.8 | 12 |
 | SC4001 | yasa_sleepstaging | 431.0 | 39.7 | 653.5 | 84.5 | 0.0 | 23.0 | 25.5 | 172 |
 | SC4011 | yasa_sleepstaging | 761.0 | 56.0 | 597.5 | 37.5 | 83.0 | 12.9 | 35.7 | 203 |
 | SC4021 | yasa_sleepstaging | 546.0 | 45.0 | 668.5 | 170.0 | 69.0 | 20.0 | 32.2 | 127 |
@@ -35,7 +35,7 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4061 | yasa_sleepstaging | 340.0 | 25.6 | 986.0 | 56.0 | 0.0 | 11.8 | 25.3 | 66 |
 | SC4071 | yasa_sleepstaging | 528.0 | 41.6 | 740.5 | 86.0 | 99.0 | 19.7 | 22.3 | 105 |
 | SC4081 | yasa_sleepstaging | 547.0 | 39.9 | 823.0 | 25.5 | 0.0 | 34.1 | 38.1 | 176 |
-| SC4091 | yasa_sleepstaging | 513.5 | 41.1 | 735.0 | 96.0 | 85.0 | 18.5 | 22.6 | 73 |
+| SC4091 | yasa_sleepstaging | 513.5 | 40.9 | 735.0 | 96.0 | 85.0 | 18.5 | 22.6 | 73 |
 | SC4101 | yasa_sleepstaging | 699.0 | 53.8 | 600.5 | 49.5 | 78.0 | 7.4 | 35.3 | 171 |
 
 ## Figures
@@ -152,7 +152,7 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4081 | yasa_sleepstaging | sleep_disordered_breathing | osa_or_hypoventilation | cannot_assess_from_stage_metrics | Stage labels do not provide scored apneas, hypopneas, oxygen desaturations, or AHI. |
 | SC4081 | yasa_sleepstaging | insomnia | insomnia_disorder | cannot_diagnose_from_psg_alone | The dataset has objective stages but no complaint duration, daytime impairment, or sleep opportunity history. |
 | SC4081 | yasa_sleepstaging | treatment_reasoning | treatment_decision | not_recommended_from_this_dataset | This analysis can generate hypotheses and referral questions, not prescribe treatment. |
-| SC4091 | yasa_sleepstaging | sleep_quality | low_sleep_continuity | screen_positive | Inferred sleep-period efficiency 41.1%, WASO 735.0 min. |
+| SC4091 | yasa_sleepstaging | sleep_quality | low_sleep_continuity | screen_positive | Inferred sleep-period efficiency 40.9%, WASO 735.0 min. |
 | SC4091 | yasa_sleepstaging | sleep_quality | long_sleep_onset_latency_proxy | context_required | First sleep begins 96.0 min after recording start. |
 | SC4091 | yasa_sleepstaging | sleep_disordered_breathing | osa_or_hypoventilation | cannot_assess_from_stage_metrics | Stage labels do not provide scored apneas, hypopneas, oxygen desaturations, or AHI. |
 | SC4091 | yasa_sleepstaging | insomnia | insomnia_disorder | cannot_diagnose_from_psg_alone | The dataset has objective stages but no complaint duration, daytime impairment, or sleep opportunity history. |
@@ -213,7 +213,7 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4031 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 17.78 | Sleep-period efficiency 36.9%, WASO 838.0 min. |
 | SC4031 | yasa_sleepstaging | 3 | Is REM or stage architecture unusual? | 2.00 | REM latency 0.0 min, N3 17.9% TST, REM 37.4% TST. |
 | SC4041 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 17.14 | Fragmentation proxy: 133 awakenings, WASO 491.5 min. |
-| SC4041 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 10.27 | Sleep-period efficiency 54.2%, WASO 491.5 min. |
+| SC4041 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 10.28 | Sleep-period efficiency 54.2%, WASO 491.5 min. |
 | SC4041 | yasa_sleepstaging | 3 | Is REM or stage architecture unusual? | 2.23 | REM latency 0.0 min, N3 7.7% TST, REM 34.0% TST. |
 | SC4051 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 27.84 | Fragmentation proxy: 199 awakenings, WASO 778.5 min. |
 | SC4051 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 16.58 | Sleep-period efficiency 39.0%, WASO 778.5 min. |
@@ -227,8 +227,8 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4081 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 26.96 | Fragmentation proxy: 176 awakenings, WASO 823.0 min. |
 | SC4081 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 17.22 | Sleep-period efficiency 39.9%, WASO 823.0 min. |
 | SC4081 | yasa_sleepstaging | 3 | Is REM or stage architecture unusual? | 2.00 | REM latency 0.0 min, N3 34.1% TST, REM 38.1% TST. |
-| SC4091 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 18.50 | Fragmentation proxy: 73 awakenings, WASO 735.0 min. |
-| SC4091 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 15.64 | Sleep-period efficiency 41.1%, WASO 735.0 min. |
+| SC4091 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 18.52 | Fragmentation proxy: 73 awakenings, WASO 735.0 min. |
+| SC4091 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 15.65 | Sleep-period efficiency 40.9%, WASO 735.0 min. |
 | SC4091 | yasa_sleepstaging | 3 | Is lights-out context needed? | 1.00 | First sleep begins 96.0 min after recording start. |
 | SC4101 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 21.53 | Fragmentation proxy: 171 awakenings, WASO 600.5 min. |
 | SC4101 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 12.13 | Sleep-period efficiency 53.8%, WASO 600.5 min. |

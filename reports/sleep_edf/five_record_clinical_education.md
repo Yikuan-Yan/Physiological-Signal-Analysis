@@ -19,7 +19,7 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4011 | reference_hypnogram | 473.0 | 96.2 | 18.5 | 359.0 | 119.5 | 11.1 | 18.0 | 13 |
 | SC4021 | reference_hypnogram | 448.5 | 99.1 | 4.0 | 364.5 | 79.5 | 10.6 | 18.2 | 7 |
 | SC4031 | reference_hypnogram | 406.0 | 97.6 | 10.0 | 435.5 | 105.5 | 7.0 | 25.7 | 12 |
-| SC4041 | reference_hypnogram | 517.5 | 92.8 | 40.0 | 406.0 | 72.0 | 5.1 | 18.9 | 28 |
+| SC4041 | reference_hypnogram | 517.5 | 92.7 | 40.0 | 406.0 | 72.0 | 5.1 | 18.9 | 28 |
 | SC4001 | yasa_sleepstaging | 431.0 | 39.7 | 653.5 | 84.5 | 0.0 | 23.0 | 25.5 | 172 |
 | SC4011 | yasa_sleepstaging | 761.0 | 56.0 | 597.5 | 37.5 | 83.0 | 12.9 | 35.7 | 203 |
 | SC4021 | yasa_sleepstaging | 546.0 | 45.0 | 668.5 | 170.0 | 69.0 | 20.0 | 32.2 | 127 |
@@ -118,7 +118,7 @@ This report shows how real sleep-stage data can be transformed into sleep qualit
 | SC4031 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 17.78 | Sleep-period efficiency 36.9%, WASO 838.0 min. |
 | SC4031 | yasa_sleepstaging | 3 | Is REM or stage architecture unusual? | 2.00 | REM latency 0.0 min, N3 17.9% TST, REM 37.4% TST. |
 | SC4041 | yasa_sleepstaging | 1 | Is respiratory-event evidence needed? | 17.14 | Fragmentation proxy: 133 awakenings, WASO 491.5 min. |
-| SC4041 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 10.27 | Sleep-period efficiency 54.2%, WASO 491.5 min. |
+| SC4041 | yasa_sleepstaging | 2 | Is sleep continuity poor? | 10.28 | Sleep-period efficiency 54.2%, WASO 491.5 min. |
 | SC4041 | yasa_sleepstaging | 3 | Is REM or stage architecture unusual? | 2.23 | REM latency 0.0 min, N3 7.7% TST, REM 34.0% TST. |
 
 ## Reference vs YASA Discrepancy
