@@ -274,9 +274,13 @@ def respiratory_metrics(
         row["ahi_style_learning_severity"] = _severity_from_ahi_style_burden(ahi_style)
         delta = float(row["ahi_style_minus_source_reported_ahi"])
         row["source_ahi_alignment_status"] = (
+            "source_ahi_estimated_annotation_unavailable"
+            if source_note
+            else (
             "needs_manual_review"
             if math.isfinite(delta) and abs(delta) > 10.0
             else "roughly_aligned"
+            )
         )
         rows.append(row)
     return pd.DataFrame(rows)
@@ -786,6 +790,7 @@ def clinical_indicators(
             }
         )
         source_delta = float(metric["ahi_style_minus_source_reported_ahi"])
+        source_note = str(metric.get("source_ahi_note", ""))
         rows.append(
             {
                 "record_id": record_id,
@@ -794,6 +799,7 @@ def clinical_indicators(
                 "status": str(metric["source_ahi_alignment_status"]),
                 "evidence": (
                     f"Annotation burden minus source AHI is {_fmt(source_delta)} events/h."
+                    + (f" Source note: {source_note}." if source_note else "")
                 ),
                 "clinical_learning": (
                     "Simple token counts are an educational proxy and may differ from the "
@@ -911,6 +917,7 @@ def build_report(
                 "burden/h": _fmt(row["ahi_style_events_per_sleep_hour"]),
                 "range": str(row["ahi_style_learning_severity"]).replace("_", " "),
                 "source AHI": _fmt(row["source_reported_ahi"]),
+                "source note": str(row.get("source_ahi_note", "")),
                 "delta": _fmt(row["ahi_style_minus_source_reported_ahi"]),
                 "obstructive/h": _fmt(row["obstructive_apnea_events_per_sleep_hour"]),
                 "central/h": _fmt(row["central_apnea_events_per_sleep_hour"]),
@@ -1035,6 +1042,7 @@ def build_report(
                 "burden/h",
                 "range",
                 "source AHI",
+                "source note",
                 "delta",
                 "obstructive/h",
                 "central/h",

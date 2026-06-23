@@ -33,10 +33,14 @@ Implemented in this phase:
 - Added SO2-channel records `slp59`, `slp60`, `slp61`, `slp66`, and `slp67x`.
 - Added oxygen desaturation proxy metrics and event-level waveform review plots.
 - Added `reports/mit_bih_psg_oxygen_record_respiratory_pilot.md` and `reports/mit_bih_psg_all_record_respiratory_pilot.md`.
+- Downloaded and validated all 18 MIT-BIH PSG WFDB records.
+- Added `reports/mit_bih_psg_complete_record_respiratory_pilot.md`.
+- Marked `slp41` and `slp45` as source-AHI-estimated records with apnea annotations unavailable.
 
 Remaining:
 
 - Manually reconcile simple annotation-token burden against the source AHI table and clinical scoring rules.
+- Formalize oxygen desaturation scoring instead of relying on percentile-baseline proxy counts.
 - Decide whether MIT-BIH PSG is sufficient for education or whether a richer PSG dataset is needed for clinical-style examples.
 - Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
 
@@ -44,8 +48,9 @@ Remaining:
 
 1. Review records where annotation-token burden differs materially from the source AHI table.
 2. Tighten event definitions if the project should approximate clinical AHI more closely.
-3. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
-4. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
+3. Replace proxy oxygen desaturation counting with a documented scoring rule.
+4. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
+5. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
 
 ## Evidence Boundaries
 
