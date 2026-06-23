@@ -18,6 +18,8 @@ Completed:
 - Download and checksum validation through `SC4101`.
 - Eight-record YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4071`.
 - MIT-BIH PSG respiratory pilot implementation for apnea/hypopnea annotation burden.
+- MIT-BIH PSG SO2-channel oxygenation analysis and event-level waveform review.
+- Eleven-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4101`.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -57,6 +59,26 @@ Eight-record outputs:
 - `results/sleep_edf/eight_record_clinical_indicators.csv`
 - `figures/sleep_edf/eight_record_hypnogram_timeline.png`
 - `figures/sleep_edf/eight_record_sleep_architecture.png`
+
+## Current Eleven-Record Results
+
+Eleven-record YASA benchmark:
+
+| records | epochs | accuracy | balanced accuracy | macro-F1 | Cohen's kappa |
+| --- | --- | --- | --- | --- | --- |
+| SC4001-SC4101 | 30,183 | 0.803 | 0.703 | 0.633 | 0.632 |
+
+Eleven-record outputs:
+
+- `reports/sleep_edf_eleven_record_yasa_profile.md`
+- `reports/sleep_edf_eleven_record_benchmark.md`
+- `reports/sleep_edf_eleven_record_clinical_education.md`
+- `results/sleep_edf/eleven_record_yasa_runtime_profile.csv`
+- `results/sleep_edf/eleven_record_yasa_metrics.csv`
+- `results/sleep_edf/eleven_record_sleep_quality_metrics.csv`
+- `results/sleep_edf/eleven_record_clinical_indicators.csv`
+- `figures/sleep_edf/eleven_record_hypnogram_timeline.png`
+- `figures/sleep_edf/eleven_record_sleep_architecture.png`
 
 ## Current Five-Record Results
 
@@ -110,14 +132,14 @@ uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep
 uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4111,SC4121,SC4131
 ```
 
-### Track B: Eleven-Record Clinical Report
+### Track B: Fourteen-Record Clinical Report
 
-The next expanded report should use the now validated records through `SC4101`.
+The next expanded report should use the records through `SC4131` after the next downloads validate.
 
 ```bash
-uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --full-night --timeout-seconds 180 --output-prefix eleven_record
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101,SC4111,SC4121,SC4131 --full-night --timeout-seconds 180 --output-prefix fourteen_record
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101,SC4111,SC4121,SC4131 --output-prefix fourteen_record --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101,SC4111,SC4121,SC4131 --output-prefix fourteen_record --include-yasa
 ```
 
 ### Track C: Respiratory PSG Dataset
@@ -132,7 +154,9 @@ Implementation outline:
 4. Done: compute apnea annotation burden per sleep hour.
 5. Done: add respiration/SpO2 quality checks.
 6. Done: extend the clinical-learning report with respiratory-event evidence.
-7. Next: add SO2-channel MIT-BIH records for oxygen desaturation burden.
+7. Done: add SO2-channel MIT-BIH records for oxygen desaturation burden.
+8. Done: generate event-level waveform windows and plots around scored respiratory events.
+9. Next: reconcile annotation-token burden against source AHI and scoring assumptions.
 
 ## Evidence Boundary
 

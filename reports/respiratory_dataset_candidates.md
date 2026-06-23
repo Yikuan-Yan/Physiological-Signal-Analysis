@@ -30,23 +30,22 @@ Implemented in this phase:
 - Added AHI-style annotation burden per sleep hour.
 - Added respiration and SpO2 channel availability/quality checks.
 - Added `reports/mit_bih_psg_respiratory_pilot.md` for respiratory-event clinical learning.
+- Added SO2-channel records `slp59`, `slp60`, `slp61`, `slp66`, and `slp67x`.
+- Added oxygen desaturation proxy metrics and event-level waveform review plots.
+- Added `reports/mit_bih_psg_oxygen_record_respiratory_pilot.md` and `reports/mit_bih_psg_all_record_respiratory_pilot.md`.
 
 Remaining:
 
-- Add records with SO2 channels for oxygen desaturation burden.
-- Add event-level waveform review around apnea/hypopnea annotations.
+- Manually reconcile simple annotation-token burden against the source AHI table and clinical scoring rules.
+- Decide whether MIT-BIH PSG is sufficient for education or whether a richer PSG dataset is needed for clinical-style examples.
 - Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
 
 ## What To Implement Next
 
-1. Add records with SO2 channels, for example `slp59`, `slp60`, `slp61`, `slp66`, or `slp67x`.
-2. Compute oxygen desaturation metrics when oximetry is available.
-3. Add event-level waveform windows around apnea/hypopnea annotations.
-4. Extend the clinical learning report with respiratory sections:
-   - apnea annotation burden;
-   - oxygen desaturation burden, when SpO2 exists;
-   - respiratory-event evidence sufficiency;
-   - treatment-learning map for PAP/oral appliance/referral questions.
+1. Review records where annotation-token burden differs materially from the source AHI table.
+2. Tighten event definitions if the project should approximate clinical AHI more closely.
+3. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
+4. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
 
 ## Evidence Boundaries
 

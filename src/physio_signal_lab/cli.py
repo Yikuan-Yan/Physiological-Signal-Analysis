@@ -363,7 +363,7 @@ def sleep_edf_clinical_education(args: argparse.Namespace) -> int:
 def download_mit_bih_psg(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     records = _csv_record_override(args.records)
-    manifest_out = write_mit_bih_psg_manifest(config, records=records)
+    manifest_out = write_mit_bih_psg_manifest(config)
     summary = download_mit_bih_psg_selection(
         config,
         records=records,
@@ -371,7 +371,7 @@ def download_mit_bih_psg(args: argparse.Namespace) -> int:
     )
     summary_out = _ensure_parent(config["outputs"]["download_summary_csv"])
     summary.to_csv(summary_out, index=False)
-    update_mit_bih_psg_manifest_checksums(manifest_out, records=records)
+    update_mit_bih_psg_manifest_checksums(manifest_out)
     print(f"wrote {summary_out} rows={len(summary)}")
     print(f"updated {manifest_out}")
     print(f"bytes={int(summary['bytes'].sum())}")
@@ -403,9 +403,15 @@ def validate_mit_bih_psg(args: argparse.Namespace) -> int:
 def mit_bih_psg_respiratory_pilot(args: argparse.Namespace) -> int:
     config = load_config(args.config)
     records = _csv_record_override(args.records)
-    outputs = run_mit_bih_psg_respiratory_pilot(config, records=records)
+    outputs = run_mit_bih_psg_respiratory_pilot(
+        config,
+        records=records,
+        output_prefix=args.output_prefix,
+    )
     print(f"wrote {outputs.annotation_epochs_csv}")
     print(f"wrote {outputs.respiratory_metrics_csv}")
+    print(f"wrote {outputs.oxygen_metrics_csv}")
+    print(f"wrote {outputs.event_windows_csv}")
     print(f"wrote {outputs.channel_quality_csv}")
     print(f"wrote {outputs.clinical_indicators_csv}")
     print(f"wrote {outputs.report_md}")
@@ -549,6 +555,7 @@ def build_parser() -> argparse.ArgumentParser:
     mit_pilot_parser = subparsers.add_parser("run-mit-bih-psg-respiratory-pilot")
     mit_pilot_parser.add_argument("--config", default="configs/mit_bih_psg.yaml")
     mit_pilot_parser.add_argument("--records", default=None)
+    mit_pilot_parser.add_argument("--output-prefix", default=None)
     mit_pilot_parser.set_defaults(func=mit_bih_psg_respiratory_pilot)
 
     run_parser = subparsers.add_parser("run-ecg-core")

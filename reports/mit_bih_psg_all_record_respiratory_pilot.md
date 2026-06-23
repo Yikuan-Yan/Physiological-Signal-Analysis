@@ -1,0 +1,173 @@
+# MIT-BIH PSG Respiratory Pilot
+
+## Purpose
+
+This report starts the respiratory and OSA-style evidence phase. It turns MIT-BIH `.st` sleep/apnea annotations into an annotation burden per sleep hour, checks whether respiration or SpO2 channels are present, and maps the results to clinical learning questions.
+
+It is an educational analysis, not a diagnosis, prescription, or triage tool.
+
+## Records
+
+- Records: slp01a, slp02a, slp03, slp59, slp60, slp61, slp66, slp67x.
+- Epoch size: 30 s; each `.st` annotation is interpreted as applying to the following epoch.
+- Record IDs are PhysioNet WFDB record IDs; segmented records such as `slp01a` and `slp02a` keep their suffixes.
+
+## Respiratory Event Burden
+
+| record | sleep h | events | burden/h | range | source AHI | delta | obstructive/h | central/h | hypopnea/h |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp01a | 1.93 | 37 | 19.1 | moderate range | 17.0 | 2.1 | 0.0 | 0.0 | 19.1 |
+| slp02a | 2.57 | 80 | 31.2 | severe range | 34.0 | -2.8 | 27.3 | 0.0 | 3.9 |
+| slp03 | 4.74 | 250 | 52.7 | severe range | 43.0 | 9.7 | 7.6 | 2.5 | 42.6 |
+| slp59 | 2.65 | 184 | 69.4 | severe range | 55.3 | 14.1 | 29.1 | 17.4 | 23.0 |
+| slp60 | 3.53 | 291 | 82.4 | severe range | 59.2 | 23.2 | 57.7 | 14.2 | 10.5 |
+| slp61 | 4.97 | 244 | 49.1 | severe range | 41.2 | 7.9 | 40.9 | 1.4 | 6.8 |
+| slp66 | 2.20 | 219 | 99.5 | severe range | 65.5 | 34.0 | 5.9 | 0.0 | 93.6 |
+| slp67x | 0.68 | 54 | 79.0 | severe range | 0.7 | 78.3 | 17.6 | 55.6 | 5.9 |
+
+## Channel Quality
+
+Some selected records include SO2/oximetry channels (slp59, slp60, slp61, slp66, slp67x); records without SO2 keep oxygen metrics unavailable.
+
+| record | channel | unit | finite % | std | dynamic |
+| --- | --- | --- | --- | --- | --- |
+| slp01a | Resp (sum) | l | 100.00 | 0.4063 | True |
+| slp02a | Resp (nasal) | l | 100.00 | 0.2992 | True |
+| slp03 | Resp (nasal) | l | 100.00 | 0.2226 | True |
+| slp59 | Resp (nasal) | l | 100.00 | 0.0005 | True |
+| slp59 | Resp (abdominal) | l | 100.00 | 0.0023 | True |
+| slp59 | SO2 | % | 100.00 | 0.0309 | True |
+| slp60 | Resp (abdominal) | l | 100.00 | 0.1668 | True |
+| slp60 | Resp (nasal) | l | 100.00 | 0.1644 | True |
+| slp60 | SO2 | % | 100.00 | 0.0757 | True |
+| slp61 | Resp (abdominal) | l | 100.00 | 0.1686 | True |
+| slp61 | SO2 | % | 100.00 | 0.1481 | True |
+| slp66 | Resp (nasal) | l | 100.00 | 0.1086 | True |
+| slp66 | Resp (abdomen) | l | 100.00 | 0.0658 | True |
+| slp66 | SO2 | % | 100.00 | 1.6566 | True |
+| slp67x | Resp (nasal) | l | 100.00 | 0.0490 | True |
+| slp67x | Resp (chest) | l | 100.00 | 0.0315 | True |
+| slp67x | SO2 | % | 100.00 | 0.6684 | True |
+
+## Oxygen Saturation
+
+SO2 metrics are computed only when an oximetry channel is present. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
+
+| record | SO2 channel | status | median % | min % | below 90 % | ODI 3% proxy | ODI 4% proxy |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| slp01a |  | no_spo2_channel | NA | NA | NA | NA | NA |
+| slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA |
+| slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA |
+| slp59 | SO2 | available | 91.5 | 40.0 | 26.0 | 54.3 | 61.5 |
+| slp60 | SO2 | available | 93.0 | 70.7 | 15.2 | 50.7 | 71.9 |
+| slp61 | SO2 | available | 94.6 | 40.0 | 18.8 | 32.2 | 31.0 |
+| slp66 | SO2 | available | 90.8 | 81.9 | 30.9 | 75.5 | 47.7 |
+| slp67x | SO2 | available | 93.7 | 83.7 | 12.1 | 65.9 | 36.6 |
+
+## Event-Level Waveform Review
+
+The event window table summarizes respiration channel windows around the first scored respiratory-event epochs per record. Generated figures overlay the scored 30 s event epoch on respiration and SO2 channels when available.
+
+| record | epoch | tokens | stage | window s | resp mean | resp std |
+| --- | --- | --- | --- | --- | --- | --- |
+| slp01a | 12 | HA | N3 | 330.0-420.0 | 0.042 | 0.561 |
+| slp01a | 13 | H LA | N3 | 360.0-450.0 | 0.037 | 0.373 |
+| slp01a | 36 | LA HA LA | N3 | 1050.0-1140.0 | 0.046 | 0.430 |
+| slp01a | 46 | H | N2 | 1350.0-1440.0 | 0.040 | 0.394 |
+| slp01a | 49 | H | N2 | 1440.0-1530.0 | 0.034 | 0.378 |
+| slp02a | 8 | X | N2 | 210.0-300.0 | -0.301 | 0.731 |
+| slp02a | 9 | X | N2 | 240.0-330.0 | -0.379 | 0.508 |
+| slp02a | 10 | X X | N2 | 270.0-360.0 | -0.345 | 0.526 |
+| slp02a | 11 | X | N2 | 300.0-390.0 | -0.346 | 0.462 |
+| slp02a | 13 | X | N2 | 360.0-450.0 | -0.353 | 0.446 |
+| slp03 | 0 | HA | N2 | 0.0-60.0 | -0.029 | 0.223 |
+| slp03 | 1 | HA | N2 | 0.0-90.0 | -0.024 | 0.239 |
+| slp03 | 2 | HA | N2 | 30.0-120.0 | -0.025 | 0.256 |
+| slp03 | 3 | HA HA | N2 | 60.0-150.0 | -0.020 | 0.287 |
+| slp03 | 4 | HA | N2 | 90.0-180.0 | -0.025 | 0.284 |
+| slp59 | 36 | HA X | N1 | 1710.0-1800.0 | 0.179 | 0.148 |
+| slp59 | 36 | HA X | N1 | 1710.0-1800.0 | 0.150 | 0.136 |
+| slp59 | 38 | X | N1 | 1770.0-1860.0 | 0.182 | 0.152 |
+| slp59 | 38 | X | N1 | 1770.0-1860.0 | 0.152 | 0.132 |
+| slp59 | 39 | X | N1 | 1800.0-1890.0 | 0.180 | 0.147 |
+
+Generated event plots:
+
+- `figures/mit_bih_psg/all_record/slp01a_epoch_0012.png`
+- `figures/mit_bih_psg/all_record/slp01a_epoch_0013.png`
+- `figures/mit_bih_psg/all_record/slp02a_epoch_0008.png`
+- `figures/mit_bih_psg/all_record/slp02a_epoch_0009.png`
+- `figures/mit_bih_psg/all_record/slp03_epoch_0000.png`
+- `figures/mit_bih_psg/all_record/slp03_epoch_0001.png`
+- `figures/mit_bih_psg/all_record/slp59_epoch_0036.png`
+- `figures/mit_bih_psg/all_record/slp59_epoch_0038.png`
+- `figures/mit_bih_psg/all_record/slp60_epoch_0004.png`
+- `figures/mit_bih_psg/all_record/slp60_epoch_0007.png`
+- `figures/mit_bih_psg/all_record/slp61_epoch_0019.png`
+- `figures/mit_bih_psg/all_record/slp61_epoch_0020.png`
+- `figures/mit_bih_psg/all_record/slp66_epoch_0004.png`
+- `figures/mit_bih_psg/all_record/slp66_epoch_0005.png`
+- `figures/mit_bih_psg/all_record/slp67x_epoch_0000.png`
+- `figures/mit_bih_psg/all_record/slp67x_epoch_0004.png`
+
+## Clinical Learning Indicators
+
+| record | domain | indicator | status | evidence |
+| --- | --- | --- | --- | --- |
+| slp01a | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 19.1 respiratory events per sleep hour (moderate range). |
+| slp01a | source_consistency | annotation_burden_vs_source_ahi | roughly_aligned | Annotation burden minus source AHI is 2.1 events/h. |
+| slp01a | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp01a | oxygenation | spo2_desaturation_burden | not_available_in_record | No SpO2/oximetry channel detected in this record. |
+| slp01a | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp02a | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 31.2 respiratory events per sleep hour (severe range). |
+| slp02a | source_consistency | annotation_burden_vs_source_ahi | roughly_aligned | Annotation burden minus source AHI is -2.8 events/h. |
+| slp02a | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp02a | oxygenation | spo2_desaturation_burden | not_available_in_record | No SpO2/oximetry channel detected in this record. |
+| slp02a | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp03 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 52.7 respiratory events per sleep hour (severe range). |
+| slp03 | source_consistency | annotation_burden_vs_source_ahi | roughly_aligned | Annotation burden minus source AHI is 9.7 events/h. |
+| slp03 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp03 | oxygenation | spo2_desaturation_burden | not_available_in_record | No SpO2/oximetry channel detected in this record. |
+| slp03 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp59 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 69.4 respiratory events per sleep hour (severe range). |
+| slp59 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 14.1 events/h. |
+| slp59 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp59 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 54.3 events per sleep hour; time below 90% SpO2 26.0% of plausible samples. |
+| slp59 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp60 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 82.4 respiratory events per sleep hour (severe range). |
+| slp60 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 23.2 events/h. |
+| slp60 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp60 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 50.7 events per sleep hour; time below 90% SpO2 15.2% of plausible samples. |
+| slp60 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp61 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 49.1 respiratory events per sleep hour (severe range). |
+| slp61 | source_consistency | annotation_burden_vs_source_ahi | roughly_aligned | Annotation burden minus source AHI is 7.9 events/h. |
+| slp61 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp61 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 32.2 events per sleep hour; time below 90% SpO2 18.8% of plausible samples. |
+| slp61 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp66 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 99.5 respiratory events per sleep hour (severe range). |
+| slp66 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 34.0 events/h. |
+| slp66 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp66 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 75.5 events per sleep hour; time below 90% SpO2 30.9% of plausible samples. |
+| slp66 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+| slp67x | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 79.0 respiratory events per sleep hour (severe range). |
+| slp67x | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 78.3 events/h. |
+| slp67x | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
+| slp67x | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 65.9 events per sleep hour; time below 90% SpO2 12.1% of plausible samples. |
+| slp67x | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
+
+## How To Read This
+
+- The core disease-style output is `ahi_style_events_per_sleep_hour`: respiratory event annotations divided by sleep hours.
+- Adult AHI learning bands used here are: <5 minimal, 5-14 mild, 15-29 moderate, and >=30 severe events per sleep hour.
+- A real clinical conclusion still needs scoring-rule context, symptoms, waveform review, oxygen desaturation, arousals, comorbidities, and clinician review.
+- SO2-derived desaturation metrics add oxygenation evidence, but artifact review and clinical scoring rules are still required before diagnostic use.
+- Treatment reasoning should be framed as questions: whether OSA evidence supports PAP evaluation, oral-appliance discussion, weight/lifestyle work, positional therapy, surgery referral, or another diagnosis.
+
+## Next Data Step
+
+Next, compare annotation burden, oxygen desaturation proxies, and waveform windows across a larger record set, then decide whether a richer PSG dataset is needed for clinical-style examples.
+
+## Source Notes
+
+- PhysioNet MIT-BIH PSG: https://physionet.org/content/slpdb/ and signal/annotation notes at https://archive.physionet.org/physiobank/database/slpdb/slpdb.shtml
+- AHI bands cross-check: Cleveland Clinic AHI ranges, https://my.clevelandclinic.org/health/articles/apnea-hypopnea-index-ahi

@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any
 import math
 
+import matplotlib
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -12,6 +16,7 @@ from physio_signal_lab.io.mit_bih_psg import (
     mit_bih_psg_records,
     validate_mit_bih_psg_manifest,
 )
+from physio_signal_lab.sleep_outputs import clean_output_prefix
 
 
 RESPIRATORY_EVENT_TOKENS = {"H", "HA", "OA", "X", "CA", "CAA"}
@@ -35,6 +40,8 @@ class ParsedAuxNote:
 class MitBihPsgPilotOutputs:
     annotation_epochs_csv: Path
     respiratory_metrics_csv: Path
+    oxygen_metrics_csv: Path
+    event_windows_csv: Path
     channel_quality_csv: Path
     clinical_indicators_csv: Path
     report_md: Path
@@ -66,6 +73,53 @@ def _count_tokens(tokens: tuple[str, ...], target: set[str]) -> int:
 
 def _base_path(raw_dir: str | Path, record_id: str) -> Path:
     return Path(raw_dir) / record_id
+
+
+def _scoped_mit_bih_output_path(output_prefix: str, suffix: str) -> Path:
+    prefix = clean_output_prefix(output_prefix)
+    return Path("results") / "mit_bih_psg" / f"{prefix}_{suffix}"
+
+
+def _scoped_mit_bih_report_path(output_prefix: str, suffix: str) -> Path:
+    prefix = clean_output_prefix(output_prefix)
+    return Path("reports") / f"mit_bih_psg_{prefix}_{suffix}"
+
+
+def _output_paths(
+    outputs: dict[str, Any],
+    output_prefix: str | None,
+) -> dict[str, Path]:
+    if output_prefix is None:
+        return {
+            "annotation_epochs_csv": Path(outputs["annotation_epochs_csv"]),
+            "respiratory_metrics_csv": Path(outputs["respiratory_metrics_csv"]),
+            "oxygen_metrics_csv": Path(outputs["oxygen_metrics_csv"]),
+            "event_windows_csv": Path(outputs["event_windows_csv"]),
+            "channel_quality_csv": Path(outputs["channel_quality_csv"]),
+            "clinical_indicators_csv": Path(outputs["clinical_indicators_csv"]),
+            "report_md": Path(outputs["report_md"]),
+            "event_plot_dir": Path(outputs["event_plot_dir"]),
+        }
+    prefix = clean_output_prefix(output_prefix)
+    return {
+        "annotation_epochs_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "annotation_epochs.csv",
+        ),
+        "respiratory_metrics_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "respiratory_metrics.csv",
+        ),
+        "oxygen_metrics_csv": _scoped_mit_bih_output_path(prefix, "oxygen_metrics.csv"),
+        "event_windows_csv": _scoped_mit_bih_output_path(prefix, "event_windows.csv"),
+        "channel_quality_csv": _scoped_mit_bih_output_path(prefix, "channel_quality.csv"),
+        "clinical_indicators_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "clinical_indicators.csv",
+        ),
+        "report_md": _scoped_mit_bih_report_path(prefix, "respiratory_pilot.md"),
+        "event_plot_dir": Path("figures") / "mit_bih_psg" / prefix,
+    }
 
 
 def read_annotation_epochs(
@@ -159,6 +213,7 @@ def respiratory_metrics(
     epochs: pd.DataFrame,
     *,
     source_reported_ahi: dict[str, float],
+    source_ahi_notes: dict[str, str] | None = None,
     epoch_seconds: float,
 ) -> pd.DataFrame:
     if epoch_seconds <= 0:
@@ -175,6 +230,7 @@ def respiratory_metrics(
         sleep_resp_epoch_count = int(included_sleep["respiratory_event_epoch"].sum())
         ahi_style = _safe_per_sleep_hour(sleep_resp_count, sleep_hours)
         reported = source_reported_ahi.get(str(record_id), math.nan)
+        source_note = (source_ahi_notes or {}).get(str(record_id), "")
         row = {
             "record_id": str(record_id),
             "epoch_seconds": float(epoch_seconds),
@@ -210,11 +266,18 @@ def respiratory_metrics(
                 sleep_hours,
             ),
             "source_reported_ahi": float(reported),
+            "source_ahi_note": source_note,
             "ahi_style_minus_source_reported_ahi": (
                 ahi_style - float(reported) if math.isfinite(float(reported)) else math.nan
             ),
         }
         row["ahi_style_learning_severity"] = _severity_from_ahi_style_burden(ahi_style)
+        delta = float(row["ahi_style_minus_source_reported_ahi"])
+        row["source_ahi_alignment_status"] = (
+            "needs_manual_review"
+            if math.isfinite(delta) and abs(delta) > 10.0
+            else "roughly_aligned"
+        )
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -280,11 +343,388 @@ def channel_quality(
     return pd.DataFrame(rows)
 
 
-def clinical_indicators(metrics: pd.DataFrame, quality: pd.DataFrame) -> pd.DataFrame:
+def _is_respiration_channel(channel_name: str) -> bool:
+    return "resp" in str(channel_name).lower()
+
+
+def _is_spo2_channel(channel_name: str) -> bool:
+    lower_name = str(channel_name).lower()
+    return any(marker in lower_name for marker in ("so2", "spo2", "sao2", "oxygen", "oxim"))
+
+
+def _channel_indices(record: Any, predicate: Any) -> list[int]:
+    return [index for index, channel in enumerate(record.sig_name) if predicate(str(channel))]
+
+
+def _scaled_plausible_spo2(signal: np.ndarray) -> np.ndarray:
+    values = np.asarray(signal, dtype=np.float64)
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return values
+    median = float(np.median(finite))
+    maximum = float(np.max(finite))
+    if 0.0 <= median <= 1.5 and maximum <= 1.5:
+        values = values * 100.0
+    return values
+
+
+def _count_threshold_segments(
+    mask: np.ndarray,
+    *,
+    fs: float,
+    min_duration_seconds: float,
+) -> tuple[int, float]:
+    if fs <= 0:
+        raise ValueError("fs must be positive")
+    if min_duration_seconds <= 0:
+        raise ValueError("min_duration_seconds must be positive")
+    values = np.asarray(mask, dtype=bool)
+    if values.size == 0:
+        return 0, 0.0
+    padded = np.concatenate(([False], values, [False]))
+    changes = np.diff(padded.astype(np.int8))
+    starts = np.flatnonzero(changes == 1)
+    stops = np.flatnonzero(changes == -1)
+    min_samples = int(math.ceil(min_duration_seconds * fs))
+    count = 0
+    total_samples = 0
+    for start, stop in zip(starts, stops):
+        length = int(stop - start)
+        if length >= min_samples:
+            count += 1
+            total_samples += length
+    return count, float(total_samples) / fs
+
+
+def oxygen_saturation_metrics(
+    *,
+    records: list[str],
+    raw_dir: str | Path,
+    respiratory: pd.DataFrame,
+    drop_thresholds_pct: list[float],
+    low_spo2_thresholds_pct: list[float],
+    min_desaturation_seconds: float,
+) -> pd.DataFrame:
+    if min_desaturation_seconds <= 0:
+        raise ValueError("min_desaturation_seconds must be positive")
+    try:
+        import wfdb
+    except ImportError as exc:
+        raise RuntimeError("wfdb is required for MIT-BIH PSG WFDB files") from exc
+
+    sleep_hours_by_record = {
+        str(row["record_id"]): float(row["sleep_hours"]) for _, row in respiratory.iterrows()
+    }
+    rows: list[dict[str, Any]] = []
+    for record_id in records:
+        base = _base_path(raw_dir, record_id).as_posix()
+        header = wfdb.rdheader(base)
+        fs = float(header.fs)
+        if fs <= 0:
+            raise ValueError(f"Invalid sampling rate for {record_id}: {header.fs}")
+        spo2_indices = _channel_indices(header, _is_spo2_channel)
+        sleep_hours = sleep_hours_by_record.get(record_id, math.nan)
+        if not spo2_indices:
+            row: dict[str, Any] = {
+                "record_id": record_id,
+                "spo2_channel_name": "",
+                "sampling_rate_hz": fs,
+                "finite_fraction_pct": math.nan,
+                "plausible_fraction_pct": math.nan,
+                "mean_spo2_pct": math.nan,
+                "median_spo2_pct": math.nan,
+                "min_spo2_pct": math.nan,
+                "p05_spo2_pct": math.nan,
+                "baseline_spo2_pct": math.nan,
+                "sleep_hours": sleep_hours,
+                "oxygen_status": "no_spo2_channel",
+            }
+            for threshold in low_spo2_thresholds_pct:
+                row[f"time_below_{int(threshold)}pct_pct_recording"] = math.nan
+            for drop in drop_thresholds_pct:
+                key = int(drop)
+                row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
+                row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
+            rows.append(row)
+            continue
+
+        channel_index = int(spo2_indices[0])
+        record = wfdb.rdrecord(base, channels=[channel_index], physical=True)
+        signal = _scaled_plausible_spo2(np.asarray(record.p_signal[:, 0], dtype=np.float64))
+        finite = np.isfinite(signal)
+        plausible = finite & (signal >= 40.0) & (signal <= 100.0)
+        plausible_signal = signal[plausible]
+        finite_fraction = float(finite.sum()) / float(signal.size) if signal.size else 0.0
+        plausible_fraction = (
+            float(plausible.sum()) / float(signal.size) if signal.size else 0.0
+        )
+        row = {
+            "record_id": record_id,
+            "spo2_channel_name": str(header.sig_name[channel_index]),
+            "sampling_rate_hz": fs,
+            "finite_fraction_pct": finite_fraction * 100.0,
+            "plausible_fraction_pct": plausible_fraction * 100.0,
+            "mean_spo2_pct": (
+                float(np.mean(plausible_signal, dtype=np.float64))
+                if plausible_signal.size
+                else math.nan
+            ),
+            "median_spo2_pct": (
+                float(np.median(plausible_signal)) if plausible_signal.size else math.nan
+            ),
+            "min_spo2_pct": (
+                float(np.min(plausible_signal)) if plausible_signal.size else math.nan
+            ),
+            "p05_spo2_pct": (
+                float(np.percentile(plausible_signal, 5)) if plausible_signal.size else math.nan
+            ),
+            "baseline_spo2_pct": (
+                float(np.percentile(plausible_signal, 95)) if plausible_signal.size else math.nan
+            ),
+            "sleep_hours": sleep_hours,
+            "oxygen_status": "available" if plausible_signal.size else "no_plausible_spo2",
+        }
+        for threshold in low_spo2_thresholds_pct:
+            key = int(threshold)
+            if plausible_signal.size:
+                row[f"time_below_{key}pct_pct_recording"] = (
+                    float((plausible_signal < float(threshold)).sum())
+                    / float(plausible_signal.size)
+                    * 100.0
+                )
+            else:
+                row[f"time_below_{key}pct_pct_recording"] = math.nan
+        baseline = float(row["baseline_spo2_pct"])
+        for drop in drop_thresholds_pct:
+            key = int(drop)
+            if math.isfinite(baseline) and plausible.any():
+                threshold = baseline - float(drop)
+                count, seconds = _count_threshold_segments(
+                    plausible & (signal <= threshold),
+                    fs=fs,
+                    min_duration_seconds=min_desaturation_seconds,
+                )
+                row[f"desaturation_{key}pct_event_count_proxy"] = int(count)
+                row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = _safe_per_sleep_hour(
+                    count,
+                    sleep_hours,
+                )
+                row[f"desaturation_{key}pct_minutes_proxy"] = seconds / 60.0
+            else:
+                row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
+                row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def event_window_summaries(
+    *,
+    records: list[str],
+    raw_dir: str | Path,
+    epochs: pd.DataFrame,
+    pre_seconds: float,
+    post_seconds: float,
+    max_events_per_record: int,
+) -> pd.DataFrame:
+    if pre_seconds < 0 or post_seconds <= 0:
+        raise ValueError("event window seconds must be non-negative pre and positive post")
+    if max_events_per_record <= 0:
+        raise ValueError("max_events_per_record must be positive")
+    try:
+        import wfdb
+    except ImportError as exc:
+        raise RuntimeError("wfdb is required for MIT-BIH PSG WFDB files") from exc
+
+    rows: list[dict[str, Any]] = []
+    for record_id in records:
+        base = _base_path(raw_dir, record_id).as_posix()
+        header = wfdb.rdheader(base)
+        fs = float(header.fs)
+        if fs <= 0:
+            raise ValueError(f"Invalid sampling rate for {record_id}: {header.fs}")
+        selected_channels = [
+            index
+            for index, name in enumerate(header.sig_name)
+            if _is_respiration_channel(str(name)) or _is_spo2_channel(str(name))
+        ]
+        if not selected_channels:
+            continue
+        record_events = epochs[
+            (epochs["record_id"] == record_id)
+            & (epochs["included_sleep"])
+            & (epochs["respiratory_event_count"] > 0)
+        ].head(max_events_per_record)
+        for event_rank, (_, event) in enumerate(record_events.iterrows(), start=1):
+            onset_seconds = float(event["onset_seconds"])
+            start_sample = max(0, int(math.floor((onset_seconds - pre_seconds) * fs)))
+            stop_sample = min(
+                int(header.sig_len),
+                int(math.ceil((onset_seconds + post_seconds) * fs)),
+            )
+            if stop_sample <= start_sample:
+                continue
+            record = wfdb.rdrecord(
+                base,
+                sampfrom=start_sample,
+                sampto=stop_sample,
+                channels=selected_channels,
+                physical=True,
+            )
+            signals = np.asarray(record.p_signal, dtype=np.float64)
+            for index, channel_name in enumerate(record.sig_name):
+                signal = signals[:, index]
+                if _is_spo2_channel(str(channel_name)):
+                    signal = _scaled_plausible_spo2(signal)
+                    finite = np.isfinite(signal) & (signal >= 40.0) & (signal <= 100.0)
+                else:
+                    finite = np.isfinite(signal)
+                finite_signal = signal[finite]
+                rows.append(
+                    {
+                        "record_id": record_id,
+                        "event_rank": int(event_rank),
+                        "epoch_index": int(event["epoch_index"]),
+                        "onset_seconds": onset_seconds,
+                        "event_tokens": str(event["event_tokens"]),
+                        "mapped_stage": str(event["mapped_stage"]),
+                        "window_start_seconds": float(start_sample) / fs,
+                        "window_stop_seconds": float(stop_sample) / fs,
+                        "channel_name": str(channel_name),
+                        "is_respiration_channel": _is_respiration_channel(str(channel_name)),
+                        "is_spo2_channel": _is_spo2_channel(str(channel_name)),
+                        "finite_fraction_pct": (
+                            float(finite.sum()) / float(signal.size) * 100.0
+                            if signal.size
+                            else 0.0
+                        ),
+                        "min_value": (
+                            float(np.min(finite_signal)) if finite_signal.size else math.nan
+                        ),
+                        "mean_value": (
+                            float(np.mean(finite_signal, dtype=np.float64))
+                            if finite_signal.size
+                            else math.nan
+                        ),
+                        "max_value": (
+                            float(np.max(finite_signal)) if finite_signal.size else math.nan
+                        ),
+                        "std_value": (
+                            float(np.std(finite_signal, dtype=np.float64))
+                            if finite_signal.size
+                            else math.nan
+                        ),
+                    }
+                )
+    return pd.DataFrame(rows)
+
+
+def plot_event_windows(
+    *,
+    records: list[str],
+    raw_dir: str | Path,
+    epochs: pd.DataFrame,
+    output_dir: Path,
+    pre_seconds: float,
+    post_seconds: float,
+    plot_events_per_record: int,
+) -> list[Path]:
+    if plot_events_per_record <= 0:
+        return []
+    try:
+        import wfdb
+    except ImportError as exc:
+        raise RuntimeError("wfdb is required for MIT-BIH PSG WFDB files") from exc
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[Path] = []
+    for record_id in records:
+        base = _base_path(raw_dir, record_id).as_posix()
+        header = wfdb.rdheader(base)
+        fs = float(header.fs)
+        if fs <= 0:
+            raise ValueError(f"Invalid sampling rate for {record_id}: {header.fs}")
+        selected_channels = [
+            index
+            for index, name in enumerate(header.sig_name)
+            if _is_respiration_channel(str(name)) or _is_spo2_channel(str(name))
+        ]
+        if not selected_channels:
+            continue
+        record_events = epochs[
+            (epochs["record_id"] == record_id)
+            & (epochs["included_sleep"])
+            & (epochs["respiratory_event_count"] > 0)
+        ].head(plot_events_per_record)
+        for _, event in record_events.iterrows():
+            onset_seconds = float(event["onset_seconds"])
+            start_sample = max(0, int(math.floor((onset_seconds - pre_seconds) * fs)))
+            stop_sample = min(
+                int(header.sig_len),
+                int(math.ceil((onset_seconds + post_seconds) * fs)),
+            )
+            if stop_sample <= start_sample:
+                continue
+            record = wfdb.rdrecord(
+                base,
+                sampfrom=start_sample,
+                sampto=stop_sample,
+                channels=selected_channels,
+                physical=True,
+            )
+            signals = np.asarray(record.p_signal, dtype=np.float64)
+            x_seconds = np.arange(signals.shape[0], dtype=np.float64) / fs
+            x_seconds = x_seconds + float(start_sample) / fs
+            fig, axes = plt.subplots(
+                len(record.sig_name),
+                1,
+                figsize=(10, max(2.4, 2.0 * len(record.sig_name))),
+                sharex=True,
+            )
+            if len(record.sig_name) == 1:
+                axes = [axes]
+            for axis, channel_index in zip(axes, range(len(record.sig_name))):
+                channel_name = str(record.sig_name[channel_index])
+                signal = signals[:, channel_index]
+                if _is_spo2_channel(channel_name):
+                    signal = _scaled_plausible_spo2(signal)
+                axis.plot(x_seconds, signal, linewidth=0.8, color="#2f5d7c")
+                axis.axvspan(
+                    onset_seconds,
+                    onset_seconds + float(event["epoch_seconds"]),
+                    color="#d95f02",
+                    alpha=0.18,
+                )
+                axis.set_ylabel(channel_name)
+                axis.grid(alpha=0.25)
+            axes[-1].set_xlabel("recording time (s)")
+            fig.suptitle(
+                f"{record_id} epoch {int(event['epoch_index'])} {event['event_tokens']}",
+                fontsize=10,
+            )
+            fig.tight_layout()
+            out = output_dir / f"{record_id}_epoch_{int(event['epoch_index']):04d}.png"
+            fig.savefig(out, dpi=150)
+            plt.close(fig)
+            paths.append(out)
+    return paths
+
+
+def clinical_indicators(
+    metrics: pd.DataFrame,
+    quality: pd.DataFrame,
+    oxygen: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     rows: list[dict[str, str]] = []
     quality_by_record = {
         str(record_id): group.copy() for record_id, group in quality.groupby("record_id", sort=True)
     }
+    oxygen_by_record = {}
+    if oxygen is not None and not oxygen.empty:
+        oxygen_by_record = {
+            str(row["record_id"]): row for _, row in oxygen.iterrows()
+        }
     for _, metric in metrics.iterrows():
         record_id = str(metric["record_id"])
         burden = float(metric["ahi_style_events_per_sleep_hour"])
@@ -303,6 +743,19 @@ def clinical_indicators(metrics: pd.DataFrame, quality: pd.DataFrame) -> pd.Data
         )
         has_spo2 = bool(
             (record_quality.get("is_spo2_channel", pd.Series(dtype=bool))).astype(bool).any()
+        )
+        oxygen_row = oxygen_by_record.get(record_id)
+        oxygen_status = str(oxygen_row["oxygen_status"]) if oxygen_row is not None else ""
+        desat3 = (
+            float(oxygen_row["desaturation_3pct_events_per_sleep_hour_proxy"])
+            if oxygen_row is not None
+            and "desaturation_3pct_events_per_sleep_hour_proxy" in oxygen_row
+            else math.nan
+        )
+        below90 = (
+            float(oxygen_row["time_below_90pct_pct_recording"])
+            if oxygen_row is not None and "time_below_90pct_pct_recording" in oxygen_row
+            else math.nan
         )
         if severity in {"moderate_range", "severe_range"}:
             status = "screen_positive_learning_signal"
@@ -332,6 +785,23 @@ def clinical_indicators(metrics: pd.DataFrame, quality: pd.DataFrame) -> pd.Data
                 ),
             }
         )
+        source_delta = float(metric["ahi_style_minus_source_reported_ahi"])
+        rows.append(
+            {
+                "record_id": record_id,
+                "domain": "source_consistency",
+                "indicator": "annotation_burden_vs_source_ahi",
+                "status": str(metric["source_ahi_alignment_status"]),
+                "evidence": (
+                    f"Annotation burden minus source AHI is {_fmt(source_delta)} events/h."
+                ),
+                "clinical_learning": (
+                    "Simple token counts are an educational proxy and may differ from the "
+                    "source AHI table because of scoring rules, wake exclusion, and event definitions."
+                ),
+                "next_data_needed": "Manual review of source annotations and scoring assumptions.",
+            }
+        )
         rows.append(
             {
                 "record_id": record_id,
@@ -355,17 +825,30 @@ def clinical_indicators(metrics: pd.DataFrame, quality: pd.DataFrame) -> pd.Data
                 "record_id": record_id,
                 "domain": "oxygenation",
                 "indicator": "spo2_desaturation_burden",
-                "status": "available_for_later_analysis" if has_spo2 else "not_available_in_record",
+                "status": (
+                    "oxygen_proxy_available"
+                    if oxygen_status == "available"
+                    else ("available_for_later_analysis" if has_spo2 else "not_available_in_record")
+                ),
                 "evidence": (
-                    "SpO2-like channel detected."
-                    if has_spo2
-                    else "No SpO2/oximetry channel detected in this pilot record."
+                    f"3% desaturation proxy {_fmt(desat3)} events per sleep hour; "
+                    f"time below 90% SpO2 {_fmt(below90)}% of plausible samples."
+                    if oxygen_status == "available"
+                    else (
+                        "SpO2-like channel detected, but oxygen proxy metrics were not computed."
+                        if has_spo2
+                        else "No SpO2/oximetry channel detected in this record."
+                    )
                 ),
                 "clinical_learning": (
                     "Oxygen desaturation burden can change OSA severity and treatment reasoning, "
                     "but it cannot be inferred when oximetry is absent."
                 ),
-                "next_data_needed": "Choose MIT-BIH records with SO2 channels or another PSG dataset with oximetry.",
+                "next_data_needed": (
+                    "Validate desaturation scoring against clinical rules and artifact review."
+                    if oxygen_status == "available"
+                    else "Choose MIT-BIH records with SO2 channels or another PSG dataset with oximetry."
+                ),
             }
         )
         rows.append(
@@ -413,6 +896,9 @@ def build_report(
     records: list[str],
     metrics: pd.DataFrame,
     quality: pd.DataFrame,
+    oxygen: pd.DataFrame,
+    event_windows: pd.DataFrame,
+    event_plot_paths: list[Path],
     indicators: pd.DataFrame,
 ) -> str:
     metric_rows = []
@@ -443,6 +929,63 @@ def build_report(
                     "finite %": _fmt(row["finite_fraction_pct"], 2),
                     "std": _fmt(row["standard_deviation"], 4),
                     "dynamic": bool(row["has_dynamic_signal"]),
+                }
+            )
+
+    has_any_spo2 = bool(quality["is_spo2_channel"].astype(bool).any()) if not quality.empty else False
+    records_with_spo2 = sorted(
+        {
+            str(row["record_id"])
+            for _, row in quality.iterrows()
+            if bool(row["is_spo2_channel"])
+        }
+    )
+    channel_note = (
+        "The selected records include SO2/oximetry channels, so oxygen saturation "
+        "proxy metrics are computed below."
+        if has_any_spo2
+        else (
+            "The selected records include respiration channels, but no SpO2/oximetry "
+            "channels. Oxygen desaturation burden cannot be interpreted from this subset."
+        )
+    )
+    if has_any_spo2 and len(records_with_spo2) != len(records):
+        channel_note = (
+            "Some selected records include SO2/oximetry channels "
+            f"({', '.join(records_with_spo2)}); records without SO2 keep oxygen metrics unavailable."
+        )
+
+    oxygen_rows = []
+    for _, row in oxygen.iterrows():
+        oxygen_rows.append(
+            {
+                "record": row["record_id"],
+                "SO2 channel": row["spo2_channel_name"],
+                "status": row["oxygen_status"],
+                "median %": _fmt(row["median_spo2_pct"]),
+                "min %": _fmt(row["min_spo2_pct"]),
+                "below 90 %": _fmt(row.get("time_below_90pct_pct_recording", math.nan)),
+                "ODI 3% proxy": _fmt(
+                    row.get("desaturation_3pct_events_per_sleep_hour_proxy", math.nan)
+                ),
+                "ODI 4% proxy": _fmt(
+                    row.get("desaturation_4pct_events_per_sleep_hour_proxy", math.nan)
+                ),
+            }
+        )
+
+    event_rows = []
+    if not event_windows.empty:
+        for _, row in event_windows[event_windows["is_respiration_channel"]].iterrows():
+            event_rows.append(
+                {
+                    "record": row["record_id"],
+                    "epoch": int(row["epoch_index"]),
+                    "tokens": row["event_tokens"],
+                    "stage": row["mapped_stage"],
+                    "window s": f"{_fmt(row['window_start_seconds'])}-{_fmt(row['window_stop_seconds'])}",
+                    "resp mean": _fmt(row["mean_value"], 3),
+                    "resp std": _fmt(row["std_value"], 3),
                 }
             )
 
@@ -477,8 +1020,8 @@ def build_report(
         f"- Records: {', '.join(records)}.",
         "- Epoch size: 30 s; each `.st` annotation is interpreted as applying to the following epoch.",
         (
-            "- Pilot records use actual PhysioNet record IDs `slp01a`, `slp02a`, and "
-            "`slp03`; the `a` suffix matters for segmented records."
+            "- Record IDs are PhysioNet WFDB record IDs; segmented records such as "
+            "`slp01a` and `slp02a` keep their suffixes."
         ),
         "",
         "## Respiratory Event Burden",
@@ -501,16 +1044,55 @@ def build_report(
         "",
         "## Channel Quality",
         "",
-        (
-            "The pilot records include respiration channels, but these three records do "
-            "not expose SpO2/oximetry channels. That means oxygen desaturation burden "
-            "cannot be interpreted from this pilot subset."
-        ),
+        channel_note,
         "",
         _markdown_table(
             channel_rows,
             ["record", "channel", "unit", "finite %", "std", "dynamic"],
         ),
+        "",
+        "## Oxygen Saturation",
+        "",
+        (
+            "SO2 metrics are computed only when an oximetry channel is present. "
+            "Desaturation counts are labeled as proxy metrics because this code uses "
+            "a percentile-derived baseline and has not replaced clinical scoring rules."
+        ),
+        "",
+        _markdown_table(
+            oxygen_rows,
+            [
+                "record",
+                "SO2 channel",
+                "status",
+                "median %",
+                "min %",
+                "below 90 %",
+                "ODI 3% proxy",
+                "ODI 4% proxy",
+            ],
+        ),
+        "",
+        "## Event-Level Waveform Review",
+        "",
+        (
+            "The event window table summarizes respiration channel windows around the "
+            "first scored respiratory-event epochs per record. Generated figures overlay "
+            "the scored 30 s event epoch on respiration and SO2 channels when available."
+        ),
+        "",
+        _markdown_table(
+            event_rows[:20],
+            ["record", "epoch", "tokens", "stage", "window s", "resp mean", "resp std"],
+        )
+        if event_rows
+        else "No event windows were generated.",
+        "",
+        "Generated event plots:",
+        "",
+        "\n".join(f"- `{path.as_posix()}`" for path in event_plot_paths[:20])
+        if event_plot_paths
+        else "- No event plots generated.",
         "",
         "## Clinical Learning Indicators",
         "",
@@ -534,6 +1116,10 @@ def build_report(
             "waveform review, oxygen desaturation, arousals, comorbidities, and clinician review."
         ),
         (
+            "- SO2-derived desaturation metrics add oxygenation evidence, but artifact "
+            "review and clinical scoring rules are still required before diagnostic use."
+        ),
+        (
             "- Treatment reasoning should be framed as questions: whether OSA evidence "
             "supports PAP evaluation, oral-appliance discussion, weight/lifestyle work, "
             "positional therapy, surgery referral, or another diagnosis."
@@ -542,9 +1128,9 @@ def build_report(
         "## Next Data Step",
         "",
         (
-            "Add MIT-BIH records with SO2 channels, such as `slp59`, `slp60`, `slp61`, "
-            "`slp66`, or `slp67x`, or move to a PSG dataset with richer oximetry and "
-            "respiratory-event scoring."
+            "Next, compare annotation burden, oxygen desaturation proxies, and waveform "
+            "windows across a larger record set, then decide whether a richer PSG dataset "
+            "is needed for clinical-style examples."
         ),
         "",
         "## Source Notes",
@@ -567,6 +1153,7 @@ def run_mit_bih_psg_respiratory_pilot(
     config: dict[str, Any],
     *,
     records: list[str] | None = None,
+    output_prefix: str | None = None,
 ) -> MitBihPsgPilotOutputs:
     selected_records = mit_bih_psg_records(config, records)
     outputs = config["outputs"]
@@ -601,9 +1188,14 @@ def run_mit_bih_psg_respiratory_pilot(
         str(key): float(value)
         for key, value in config["selection"].get("source_reported_ahi", {}).items()
     }
+    source_ahi_notes = {
+        str(key): str(value)
+        for key, value in config["selection"].get("source_ahi_notes", {}).items()
+    }
     metrics = respiratory_metrics(
         epochs,
         source_reported_ahi=source_reported_ahi,
+        source_ahi_notes=source_ahi_notes,
         epoch_seconds=epoch_seconds,
     )
     quality = channel_quality(
@@ -611,17 +1203,63 @@ def run_mit_bih_psg_respiratory_pilot(
         raw_dir=raw_dir,
         sample_seconds=float(config["quality"]["sample_seconds"]),
     )
-    indicators = clinical_indicators(metrics, quality)
+    oxygen_config = config.get("oxygen", {})
+    oxygen = oxygen_saturation_metrics(
+        records=selected_records,
+        raw_dir=raw_dir,
+        respiratory=metrics,
+        drop_thresholds_pct=[
+            float(value) for value in oxygen_config.get("desaturation_drop_pct", [3, 4])
+        ],
+        low_spo2_thresholds_pct=[
+            float(value) for value in oxygen_config.get("low_spo2_thresholds_pct", [90, 88])
+        ],
+        min_desaturation_seconds=float(
+            oxygen_config.get("min_desaturation_seconds", 10.0)
+        ),
+    )
+    event_config = config.get("event_review", {})
+    output_paths = _output_paths(outputs, output_prefix)
+    event_windows = event_window_summaries(
+        records=selected_records,
+        raw_dir=raw_dir,
+        epochs=epochs,
+        pre_seconds=float(event_config.get("pre_seconds", 30.0)),
+        post_seconds=float(event_config.get("post_seconds", 60.0)),
+        max_events_per_record=int(event_config.get("max_events_per_record", 5)),
+    )
+    event_plot_paths = plot_event_windows(
+        records=selected_records,
+        raw_dir=raw_dir,
+        epochs=epochs,
+        output_dir=output_paths["event_plot_dir"],
+        pre_seconds=float(event_config.get("pre_seconds", 30.0)),
+        post_seconds=float(event_config.get("post_seconds", 60.0)),
+        plot_events_per_record=int(event_config.get("plot_events_per_record", 2)),
+    )
+    indicators = clinical_indicators(metrics, quality, oxygen)
 
-    epochs_out = Path(outputs["annotation_epochs_csv"])
-    metrics_out = Path(outputs["respiratory_metrics_csv"])
-    quality_out = Path(outputs["channel_quality_csv"])
-    indicators_out = Path(outputs["clinical_indicators_csv"])
-    report_out = Path(outputs["report_md"])
-    for out in (epochs_out, metrics_out, quality_out, indicators_out, report_out):
+    epochs_out = output_paths["annotation_epochs_csv"]
+    metrics_out = output_paths["respiratory_metrics_csv"]
+    oxygen_out = output_paths["oxygen_metrics_csv"]
+    event_windows_out = output_paths["event_windows_csv"]
+    quality_out = output_paths["channel_quality_csv"]
+    indicators_out = output_paths["clinical_indicators_csv"]
+    report_out = output_paths["report_md"]
+    for out in (
+        epochs_out,
+        metrics_out,
+        oxygen_out,
+        event_windows_out,
+        quality_out,
+        indicators_out,
+        report_out,
+    ):
         out.parent.mkdir(parents=True, exist_ok=True)
     epochs.to_csv(epochs_out, index=False)
     metrics.to_csv(metrics_out, index=False)
+    oxygen.to_csv(oxygen_out, index=False)
+    event_windows.to_csv(event_windows_out, index=False)
     quality.to_csv(quality_out, index=False)
     indicators.to_csv(indicators_out, index=False)
     report_out.write_text(
@@ -629,6 +1267,9 @@ def run_mit_bih_psg_respiratory_pilot(
             records=selected_records,
             metrics=metrics,
             quality=quality,
+            oxygen=oxygen,
+            event_windows=event_windows,
+            event_plot_paths=event_plot_paths,
             indicators=indicators,
         ),
         encoding="utf-8",
@@ -636,6 +1277,8 @@ def run_mit_bih_psg_respiratory_pilot(
     return MitBihPsgPilotOutputs(
         annotation_epochs_csv=epochs_out,
         respiratory_metrics_csv=metrics_out,
+        oxygen_metrics_csv=oxygen_out,
+        event_windows_csv=event_windows_out,
         channel_quality_csv=quality_out,
         clinical_indicators_csv=indicators_out,
         report_md=report_out,

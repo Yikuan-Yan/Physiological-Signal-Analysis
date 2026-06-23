@@ -1,0 +1,21 @@
+record_id,total_epochs,included_epochs,excluded_epochs,wake_epochs,n1_epochs,n2_epochs,n3_epochs,rem_epochs,sampling_rate_hz,duration_seconds,raw_epoch_count,expanded_epoch_count,included_epoch_count,excluded_epoch_count,channel_names
+SC4001,2650,2650,0,1997,58,250,220,125,100.0,79500.0,2650,2650,2650,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4011,2802,2802,0,1856,109,562,105,170,100.0,84060.0,2802,2802,2802,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4021,2804,2804,0,1907,94,545,95,163,100.0,84120.0,2804,2804,2804,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4031,2820,2820,0,2008,61,485,57,209,100.0,84600.0,2820,2820,2820,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4041,2570,2569,1,1534,166,620,53,196,100.0,77100.0,2570,2570,2569,1,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4051,2722,2722,0,2258,44,217,135,68,100.0,81660.0,2722,2722,2722,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4061,2770,2770,0,2069,56,407,136,102,100.0,83100.0,2770,2770,2770,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4071,2810,2810,0,1958,89,403,162,198,100.0,84300.0,2810,2810,2810,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4081,2796,2796,0,1985,68,262,350,131,100.0,83880.0,2796,2796,2796,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4091,2732,2721,11,1739,19,561,170,232,100.0,81960.0,2732,2732,2721,11,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4101,2720,2719,1,1770,65,671,6,207,100.0,81600.0,2720,2720,2719,1,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4111,2642,2641,1,1839,13,502,129,158,100.0,79260.0,2642,2642,2641,1,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4121,2786,2685,101,1809,48,463,107,258,100.0,83580.0,2786,2786,2685,101,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4131,2814,2814,0,1941,57,497,147,172,100.0,84420.0,2814,2814,2814,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4141,2756,2756,0,1939,29,404,151,233,100.0,82680.0,2756,2756,2756,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4151,2620,2616,4,1836,41,354,177,208,100.0,78600.0,2620,2620,2616,4,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4161,2626,2621,5,1693,55,448,165,260,100.0,78780.0,2626,2626,2621,5,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4171,2742,2741,1,1915,21,328,215,262,100.0,82260.0,2742,2742,2741,1,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4181,2756,2756,0,1930,29,388,291,118,100.0,82680.0,2756,2756,2756,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker
+SC4191,2774,2774,0,1427,118,833,110,286,100.0,83220.0,2774,2774,2774,0,EEG Fpz-Cz;EEG Pz-Oz;EOG horizontal;Resp oro-nasal;EMG submental;Temp rectal;Event marker

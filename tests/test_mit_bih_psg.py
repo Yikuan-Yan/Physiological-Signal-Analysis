@@ -5,6 +5,7 @@ import pytest
 
 from physio_signal_lab.io.mit_bih_psg import build_mit_bih_psg_manifest
 from physio_signal_lab.mit_bih_psg import (
+    _count_threshold_segments,
     clinical_indicators,
     parse_aux_note,
     respiratory_metrics,
@@ -105,6 +106,7 @@ def test_respiratory_metrics_count_sleep_events_per_sleep_hour():
     assert row["obstructive_apnea_events_per_sleep_hour"] == pytest.approx(60.0)
     assert row["hypopnea_events_per_sleep_hour"] == pytest.approx(60.0)
     assert row["ahi_style_learning_severity"] == "severe_range"
+    assert row["source_ahi_alignment_status"] == "needs_manual_review"
 
 
 def test_respiratory_metrics_return_nan_when_no_sleep_epochs():
@@ -138,6 +140,8 @@ def test_clinical_indicators_mark_missing_spo2_boundary():
                 "record_id": "slp01a",
                 "ahi_style_events_per_sleep_hour": 17.0,
                 "ahi_style_learning_severity": "moderate_range",
+                "ahi_style_minus_source_reported_ahi": 2.0,
+                "source_ahi_alignment_status": "roughly_aligned",
             }
         ]
     )
@@ -158,6 +162,59 @@ def test_clinical_indicators_mark_missing_spo2_boundary():
     assert "screen_positive_learning_signal" in statuses
     assert "not_available_in_record" in statuses
     assert "educational_question_only" in statuses
+
+
+def test_count_threshold_segments_enforces_minimum_duration():
+    mask = [False, True, True, False, True, True, True, True, False]
+
+    count, seconds = _count_threshold_segments(
+        mask,
+        fs=1.0,
+        min_duration_seconds=3.0,
+    )
+
+    assert count == 1
+    assert seconds == pytest.approx(4.0)
+
+
+def test_clinical_indicators_include_oxygen_proxy_when_available():
+    metrics = pd.DataFrame(
+        [
+            {
+                "record_id": "slp59",
+                "ahi_style_events_per_sleep_hour": 55.3,
+                "ahi_style_learning_severity": "severe_range",
+                "ahi_style_minus_source_reported_ahi": 0.0,
+                "source_ahi_alignment_status": "roughly_aligned",
+            }
+        ]
+    )
+    quality = pd.DataFrame(
+        [
+            {
+                "record_id": "slp59",
+                "is_respiration_channel": True,
+                "is_spo2_channel": True,
+                "has_dynamic_signal": True,
+            }
+        ]
+    )
+    oxygen = pd.DataFrame(
+        [
+            {
+                "record_id": "slp59",
+                "oxygen_status": "available",
+                "desaturation_3pct_events_per_sleep_hour_proxy": 14.5,
+                "time_below_90pct_pct_recording": 2.5,
+            }
+        ]
+    )
+
+    indicators = clinical_indicators(metrics, quality, oxygen)
+    oxygen_row = indicators[indicators["indicator"] == "spo2_desaturation_burden"].iloc[0]
+
+    assert oxygen_row["status"] == "oxygen_proxy_available"
+    assert "14.5" in oxygen_row["evidence"]
 
 
 def test_build_mit_bih_psg_manifest_uses_physionet_record_files():

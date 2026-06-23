@@ -1,0 +1,4 @@
+record_id,spo2_channel_name,sampling_rate_hz,finite_fraction_pct,plausible_fraction_pct,mean_spo2_pct,median_spo2_pct,min_spo2_pct,p05_spo2_pct,baseline_spo2_pct,sleep_hours,oxygen_status,time_below_90pct_pct_recording,time_below_88pct_pct_recording,desaturation_3pct_event_count_proxy,desaturation_3pct_events_per_sleep_hour_proxy,desaturation_3pct_minutes_proxy,desaturation_4pct_event_count_proxy,desaturation_4pct_events_per_sleep_hour_proxy,desaturation_4pct_minutes_proxy
+slp01a,,250.0,,,,,,,,1.9333333333333333,no_spo2_channel,,,,,,,,
+slp02a,,250.0,,,,,,,,2.566666666666667,no_spo2_channel,,,,,,,,
+slp03,,250.0,,,,,,,,4.741666666666666,no_spo2_channel,,,,,,,,

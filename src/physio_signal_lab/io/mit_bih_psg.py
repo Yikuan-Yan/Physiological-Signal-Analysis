@@ -16,6 +16,8 @@ REQUIRED_EXTENSIONS = ("hea", "dat", "st", "ecg")
 def mit_bih_psg_records(config: dict[str, Any], records: list[str] | None = None) -> list[str]:
     if records is not None:
         return list(records)
+    if "default_records" in config["selection"]:
+        return [str(record) for record in config["selection"]["default_records"]]
     return [str(record) for record in config["selection"]["pilot_records"]]
 
 

@@ -9,10 +9,35 @@ dataset:
   access_date: 2026-06-23
 
 selection:
+  default_records:
+    - slp01a
+    - slp01b
+    - slp02a
+    - slp02b
+    - slp03
+    - slp04
+    - slp14
+    - slp16
+    - slp32
+    - slp37
+    - slp41
+    - slp45
+    - slp48
+    - slp59
+    - slp60
+    - slp61
+    - slp66
+    - slp67x
   pilot_records:
     - slp01a
     - slp02a
     - slp03
+  oxygen_records:
+    - slp59
+    - slp60
+    - slp61
+    - slp66
+    - slp67x
   files:
     - hea
     - dat
@@ -20,8 +45,26 @@ selection:
     - ecg
   source_reported_ahi:
     slp01a: 17.0
+    slp01b: 22.3
     slp02a: 34.0
+    slp02b: 22.2
     slp03: 43.0
+    slp04: 59.8
+    slp14: 30.7
+    slp16: 53.1
+    slp32: 22.1
+    slp37: 100.8
+    slp41: 60.0
+    slp45: 5.0
+    slp48: 46.8
+    slp59: 55.3
+    slp60: 59.2
+    slp61: 41.2
+    slp66: 65.5
+    slp67x: 0.7
+  source_ahi_notes:
+    slp41: estimated_from_visual_review_apnea_annotations_unavailable
+    slp45: estimated_from_visual_review_apnea_annotations_unavailable
 
 annotations:
   epoch_seconds: 30
@@ -38,12 +81,30 @@ annotations:
 quality:
   sample_seconds: 60
 
+oxygen:
+  desaturation_drop_pct:
+    - 3
+    - 4
+  min_desaturation_seconds: 10
+  low_spo2_thresholds_pct:
+    - 90
+    - 88
+
+event_review:
+  pre_seconds: 30
+  post_seconds: 60
+  max_events_per_record: 5
+  plot_events_per_record: 2
+
 outputs:
   manifest_csv: data_manifest_mit_bih_psg.csv
   download_summary_csv: results/mit_bih_psg/download_summary.csv
   validation_csv: results/mit_bih_psg/validation.csv
   annotation_epochs_csv: results/mit_bih_psg/pilot_annotation_epochs.csv
   respiratory_metrics_csv: results/mit_bih_psg/pilot_respiratory_metrics.csv
+  oxygen_metrics_csv: results/mit_bih_psg/pilot_oxygen_metrics.csv
+  event_windows_csv: results/mit_bih_psg/pilot_event_windows.csv
+  event_plot_dir: figures/mit_bih_psg
   channel_quality_csv: results/mit_bih_psg/pilot_channel_quality.csv
   clinical_indicators_csv: results/mit_bih_psg/pilot_clinical_indicators.csv
   report_md: reports/mit_bih_psg_respiratory_pilot.md
