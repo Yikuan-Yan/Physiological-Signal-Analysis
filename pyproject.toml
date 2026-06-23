@@ -2,8 +2,9 @@
 name = "physio-signal-lab"
 version = "0.1.0"
 description = "Reproducible ECG and HRV analysis for public physiological signal datasets."
-readme = "docs/plans/public_real_physiological_signal_analysis_plan_v4.md"
+readme = "README.md"
 requires-python = ">=3.11,<3.14"
+license = "MIT"
 dependencies = [
     "matplotlib>=3.9",
     "neurokit2>=0.2.10",

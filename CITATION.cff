@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it and the original public datasets."
+type: software
+title: "Physio Signal Lab"
+version: "0.1.0"
+date-released: "2026-06-24"
+repository-code: "https://github.com/Yikuan-Yan/Physiological-Signal-Analysis"
+license: "MIT"
+authors:
+  - family-names: "Yan"
+    given-names: "Yikuan"
+keywords:
+  - physiological signals
+  - ECG
+  - HRV
+  - sleep staging
+  - polysomnography
+  - reproducible research
+abstract: "A research and education prototype for reproducible public-data physiological signal analysis across ECG/HRV, Sleep-EDF sleep staging, and MIT-BIH PSG respiratory evidence workflows."
+references:
+  - type: data
+    title: "Fantasia Database"
+    version: "1.0.0"
+    url: "https://physionet.org/content/fantasia/1.0.0/"
+  - type: data
+    title: "Sleep-EDF Database Expanded"
+    version: "1.0.0"
+    url: "https://physionet.org/content/sleep-edfx/1.0.0/"
+  - type: data
+    title: "MIT-BIH Polysomnographic Database"
+    version: "1.0.0"
+    url: "https://physionet.org/content/slpdb/1.0.0/"
