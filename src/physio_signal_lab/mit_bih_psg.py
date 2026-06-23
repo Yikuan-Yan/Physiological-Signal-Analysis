@@ -517,6 +517,66 @@ def _count_threshold_segments(
     return count, float(total_samples) / fs
 
 
+def _pre_event_rolling_baseline(
+    signal: np.ndarray,
+    plausible: np.ndarray,
+    *,
+    fs: float,
+    baseline_window_seconds: float,
+) -> np.ndarray:
+    if fs <= 0:
+        raise ValueError("fs must be positive")
+    if baseline_window_seconds <= 0:
+        raise ValueError("baseline_window_seconds must be positive")
+    values = np.asarray(signal, dtype=np.float64)
+    valid = np.asarray(plausible, dtype=bool)
+    if values.shape != valid.shape:
+        raise ValueError("signal and plausible mask must have the same shape")
+    if values.size == 0:
+        return np.asarray([], dtype=np.float64)
+    window_samples = max(1, int(round(baseline_window_seconds * fs)))
+    baseline_source = np.where(valid, values, np.nan)
+    rolling = pd.Series(baseline_source).rolling(
+        window=window_samples,
+        min_periods=1,
+    )
+    return rolling.max().shift(1).to_numpy(dtype=np.float64)
+
+
+def _count_desaturation_events(
+    signal: np.ndarray,
+    *,
+    baseline: np.ndarray,
+    plausible: np.ndarray,
+    scope: np.ndarray,
+    fs: float,
+    drop_pct: float,
+    min_duration_seconds: float,
+) -> tuple[int, float]:
+    if drop_pct <= 0:
+        raise ValueError("drop_pct must be positive")
+    values = np.asarray(signal, dtype=np.float64)
+    baseline_values = np.asarray(baseline, dtype=np.float64)
+    plausible_mask = np.asarray(plausible, dtype=bool)
+    scope_mask = np.asarray(scope, dtype=bool)
+    if not (
+        values.shape == baseline_values.shape == plausible_mask.shape == scope_mask.shape
+    ):
+        raise ValueError("signal, baseline, plausible, and scope arrays must match")
+    desaturation_mask = (
+        scope_mask
+        & plausible_mask
+        & np.isfinite(values)
+        & np.isfinite(baseline_values)
+        & ((baseline_values - values) >= float(drop_pct))
+    )
+    return _count_threshold_segments(
+        desaturation_mask,
+        fs=fs,
+        min_duration_seconds=min_duration_seconds,
+    )
+
+
 def _sleep_sample_mask(
     record_epochs: pd.DataFrame,
     *,
@@ -554,9 +614,12 @@ def oxygen_saturation_metrics(
     drop_thresholds_pct: list[float],
     low_spo2_thresholds_pct: list[float],
     min_desaturation_seconds: float,
+    baseline_window_seconds: float,
 ) -> pd.DataFrame:
     if min_desaturation_seconds <= 0:
         raise ValueError("min_desaturation_seconds must be positive")
+    if baseline_window_seconds <= 0:
+        raise ValueError("baseline_window_seconds must be positive")
     try:
         import wfdb
     except ImportError as exc:
@@ -591,6 +654,9 @@ def oxygen_saturation_metrics(
                 "baseline_spo2_pct": math.nan,
                 "sleep_plausible_fraction_pct": math.nan,
                 "sleep_baseline_spo2_pct": math.nan,
+                "desaturation_scoring_rule": "pre_event_rolling_baseline",
+                "desaturation_baseline_window_seconds": float(baseline_window_seconds),
+                "desaturation_min_duration_seconds": float(min_desaturation_seconds),
                 "sleep_hours": sleep_hours,
                 "oxygen_status": "no_spo2_channel",
             }
@@ -605,6 +671,11 @@ def oxygen_saturation_metrics(
                 row[f"sleep_desaturation_{key}pct_event_count_proxy"] = math.nan
                 row[f"sleep_desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
                 row[f"sleep_desaturation_{key}pct_minutes_proxy"] = math.nan
+                row[f"recording_desaturation_{key}pct_event_count"] = math.nan
+                row[f"recording_desaturation_{key}pct_minutes"] = math.nan
+                row[f"sleep_desaturation_{key}pct_event_count"] = math.nan
+                row[f"sleep_odi_{key}pct_events_per_hour"] = math.nan
+                row[f"sleep_desaturation_{key}pct_minutes"] = math.nan
                 row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
                 row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
                 row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
@@ -621,6 +692,12 @@ def oxygen_saturation_metrics(
         sleep_mask = _sleep_sample_mask(record_epochs, sample_count=signal.size, fs=fs)
         sleep_plausible = plausible & sleep_mask
         sleep_plausible_signal = signal[sleep_plausible]
+        pre_event_baseline = _pre_event_rolling_baseline(
+            signal,
+            plausible,
+            fs=fs,
+            baseline_window_seconds=baseline_window_seconds,
+        )
         finite_fraction = float(finite.sum()) / float(signal.size) if signal.size else 0.0
         plausible_fraction = (
             float(plausible.sum()) / float(signal.size) if signal.size else 0.0
@@ -664,6 +741,9 @@ def oxygen_saturation_metrics(
                 if sleep_plausible_signal.size
                 else math.nan
             ),
+            "desaturation_scoring_rule": "pre_event_rolling_baseline",
+            "desaturation_baseline_window_seconds": float(baseline_window_seconds),
+            "desaturation_min_duration_seconds": float(min_desaturation_seconds),
             "sleep_hours": sleep_hours,
             "oxygen_status": (
                 "available"
@@ -729,6 +809,45 @@ def oxygen_saturation_metrics(
                 row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
                 row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
                 row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
+            if plausible.any():
+                scored_recording_count, scored_recording_seconds = _count_desaturation_events(
+                    signal,
+                    baseline=pre_event_baseline,
+                    plausible=plausible,
+                    scope=np.ones(signal.shape, dtype=bool),
+                    fs=fs,
+                    drop_pct=float(drop),
+                    min_duration_seconds=min_desaturation_seconds,
+                )
+                row[f"recording_desaturation_{key}pct_event_count"] = int(
+                    scored_recording_count
+                )
+                row[f"recording_desaturation_{key}pct_minutes"] = (
+                    scored_recording_seconds / 60.0
+                )
+            else:
+                row[f"recording_desaturation_{key}pct_event_count"] = math.nan
+                row[f"recording_desaturation_{key}pct_minutes"] = math.nan
+            if sleep_plausible.any():
+                scored_sleep_count, scored_sleep_seconds = _count_desaturation_events(
+                    signal,
+                    baseline=pre_event_baseline,
+                    plausible=plausible,
+                    scope=sleep_mask,
+                    fs=fs,
+                    drop_pct=float(drop),
+                    min_duration_seconds=min_desaturation_seconds,
+                )
+                row[f"sleep_desaturation_{key}pct_event_count"] = int(scored_sleep_count)
+                row[f"sleep_odi_{key}pct_events_per_hour"] = _safe_per_sleep_hour(
+                    scored_sleep_count,
+                    sleep_hours,
+                )
+                row[f"sleep_desaturation_{key}pct_minutes"] = scored_sleep_seconds / 60.0
+            else:
+                row[f"sleep_desaturation_{key}pct_event_count"] = math.nan
+                row[f"sleep_odi_{key}pct_events_per_hour"] = math.nan
+                row[f"sleep_desaturation_{key}pct_minutes"] = math.nan
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -963,8 +1082,30 @@ def clinical_indicators(
         desat3 = (
             float(
                 oxygen_row.get(
-                    "sleep_desaturation_3pct_events_per_sleep_hour_proxy",
-                    oxygen_row.get("desaturation_3pct_events_per_sleep_hour_proxy", math.nan),
+                    "sleep_odi_3pct_events_per_hour",
+                    oxygen_row.get(
+                        "sleep_desaturation_3pct_events_per_sleep_hour_proxy",
+                        oxygen_row.get(
+                            "desaturation_3pct_events_per_sleep_hour_proxy",
+                            math.nan,
+                        ),
+                    ),
+                )
+            )
+            if oxygen_row is not None
+            else math.nan
+        )
+        desat4 = (
+            float(
+                oxygen_row.get(
+                    "sleep_odi_4pct_events_per_hour",
+                    oxygen_row.get(
+                        "sleep_desaturation_4pct_events_per_sleep_hour_proxy",
+                        oxygen_row.get(
+                            "desaturation_4pct_events_per_sleep_hour_proxy",
+                            math.nan,
+                        ),
+                    ),
                 )
             )
             if oxygen_row is not None
@@ -1051,12 +1192,13 @@ def clinical_indicators(
                 "domain": "oxygenation",
                 "indicator": "spo2_desaturation_burden",
                 "status": (
-                    "oxygen_proxy_available"
+                    "oxygen_desaturation_available"
                     if oxygen_status == "available"
                     else ("available_for_later_analysis" if has_spo2 else "not_available_in_record")
                 ),
                 "evidence": (
-                    f"3% desaturation proxy {_fmt(desat3)} events per sleep hour; "
+                    f"ODI 3% {_fmt(desat3)} events per sleep hour; "
+                    f"ODI 4% {_fmt(desat4)} events per sleep hour; "
                     f"time below 90% SpO2 {_fmt(below90)}% of plausible sleep samples."
                     if oxygen_status == "available"
                     else (
@@ -1067,10 +1209,10 @@ def clinical_indicators(
                 ),
                 "clinical_learning": (
                     "Oxygen desaturation burden can change OSA severity and treatment reasoning, "
-                    "but it cannot be inferred when oximetry is absent."
+                    "but it is not a standalone diagnosis and does not score airflow or arousals."
                 ),
                 "next_data_needed": (
-                    "Validate desaturation scoring against clinical rules and artifact review."
+                    "Validate desaturation scoring against airflow, arousals, and artifact review."
                     if oxygen_status == "available"
                     else "Choose MIT-BIH records with SO2 channels or another PSG dataset with oximetry."
                 ),
@@ -1185,7 +1327,7 @@ def build_report(
     )
     channel_note = (
         "The selected records include SO2/oximetry channels, so oxygen saturation "
-        "proxy metrics are computed below."
+        "ODI metrics are computed below."
         if has_any_spo2
         else (
             "The selected records include respiration channels, but no SpO2/oximetry "
@@ -1209,12 +1351,9 @@ def build_report(
                 "min %": _fmt(row["min_spo2_pct"]),
                 "below 90 %": _fmt(row.get("time_below_90pct_pct_recording", math.nan)),
                 "below 90 % sleep": _fmt(row.get("time_below_90pct_pct_sleep", math.nan)),
-                "ODI 3% proxy": _fmt(
-                    row.get("sleep_desaturation_3pct_events_per_sleep_hour_proxy", math.nan)
-                ),
-                "ODI 4% proxy": _fmt(
-                    row.get("sleep_desaturation_4pct_events_per_sleep_hour_proxy", math.nan)
-                ),
+                "ODI 3%": _fmt(row.get("sleep_odi_3pct_events_per_hour", math.nan)),
+                "ODI 4%": _fmt(row.get("sleep_odi_4pct_events_per_hour", math.nan)),
+                "rule": row.get("desaturation_scoring_rule", ""),
             }
         )
 
@@ -1324,10 +1463,11 @@ def build_report(
         "",
         (
             "SO2 metrics are computed only when an oximetry channel is present. "
-            "The report table uses sleep-only low-oxygen and ODI proxy values; "
-            "recording-wide oxygen summaries remain in the CSV for audit. "
-            "Desaturation counts are labeled as proxy metrics because this code uses "
-            "a percentile-derived baseline and has not replaced clinical scoring rules."
+            "The report table uses sleep-only ODI values from a documented "
+            "pre-event rolling-baseline desaturation rule; recording-wide and legacy "
+            "percentile-proxy oxygen summaries remain in the CSV for audit. "
+            "This is oxygen-only evidence, not full hypopnea scoring because airflow "
+            "reduction and arousal rules are not adjudicated here."
         ),
         "",
         _markdown_table(
@@ -1340,8 +1480,9 @@ def build_report(
                 "min %",
                 "below 90 %",
                 "below 90 % sleep",
-                "ODI 3% proxy",
-                "ODI 4% proxy",
+                "ODI 3%",
+                "ODI 4%",
+                "rule",
             ],
         ),
         "",
@@ -1389,7 +1530,8 @@ def build_report(
         ),
         (
             "- SO2-derived desaturation metrics add oxygenation evidence, but artifact "
-            "review and clinical scoring rules are still required before diagnostic use."
+            "review, airflow reduction, arousal scoring, and clinician interpretation "
+            "are still required before diagnostic use."
         ),
         (
             "- Treatment reasoning should be framed as questions: whether OSA evidence "
@@ -1401,8 +1543,9 @@ def build_report(
         "",
         (
             "Next, manually adjudicate the high-priority source AHI alignment rows, "
-            "replace the sleep-only oxygen proxy with a documented scoring rule, and "
-            "then decide whether a richer PSG dataset is needed for clinical-style examples."
+            "review the pre-event-baseline ODI scorer against artifacts and event "
+            "windows, and then decide whether a richer PSG dataset is needed for "
+            "clinical-style examples."
         ),
         "",
         "## Source Notes",
@@ -1415,6 +1558,13 @@ def build_report(
         (
             "- AHI bands cross-check: Cleveland Clinic AHI ranges, "
             "https://my.clevelandclinic.org/health/articles/apnea-hypopnea-index-ahi"
+        ),
+        (
+            "- Hypopnea scoring context: AASM-recommended adult hypopnea criteria "
+            "use airflow reduction plus 3% oxygen desaturation or arousal, while "
+            "CMS-style scoring uses 4% oxygen desaturation; this report computes "
+            "oxygen-only ODI signals, not full hypopnea events. "
+            "https://doi.org/10.5664/jcsm.9952"
         ),
         "",
     ]
@@ -1490,6 +1640,9 @@ def run_mit_bih_psg_respiratory_pilot(
         ],
         min_desaturation_seconds=float(
             oxygen_config.get("min_desaturation_seconds", 10.0)
+        ),
+        baseline_window_seconds=float(
+            oxygen_config.get("desaturation_baseline_window_seconds", 120.0)
         ),
     )
     event_config = config.get("event_review", {})

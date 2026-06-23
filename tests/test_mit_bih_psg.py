@@ -7,6 +7,8 @@ import pytest
 from physio_signal_lab.io.mit_bih_psg import build_mit_bih_psg_manifest
 from physio_signal_lab.mit_bih_psg import (
     _count_threshold_segments,
+    _count_desaturation_events,
+    _pre_event_rolling_baseline,
     _sleep_sample_mask,
     clinical_indicators,
     parse_aux_note,
@@ -238,6 +240,31 @@ def test_sleep_sample_mask_keeps_wake_samples_out_and_clips_epochs():
     )
 
 
+def test_pre_event_desaturation_scorer_uses_local_baseline_and_sleep_scope():
+    signal = np.array([96, 96, 96, 92, 92, 92, 96, 96], dtype=float)
+    plausible = np.ones(signal.shape, dtype=bool)
+    sleep_scope = np.array([False, False, True, True, True, True, True, True])
+
+    baseline = _pre_event_rolling_baseline(
+        signal,
+        plausible,
+        fs=1.0,
+        baseline_window_seconds=3.0,
+    )
+    count, seconds = _count_desaturation_events(
+        signal,
+        baseline=baseline,
+        plausible=plausible,
+        scope=sleep_scope,
+        fs=1.0,
+        drop_pct=3.0,
+        min_duration_seconds=2.0,
+    )
+
+    assert count == 1
+    assert seconds == pytest.approx(3.0)
+
+
 def test_clinical_indicators_include_oxygen_proxy_when_available():
     metrics = pd.DataFrame(
         [
@@ -265,6 +292,8 @@ def test_clinical_indicators_include_oxygen_proxy_when_available():
             {
                 "record_id": "slp59",
                 "oxygen_status": "available",
+                "sleep_odi_3pct_events_per_hour": 12.5,
+                "sleep_odi_4pct_events_per_hour": 7.5,
                 "sleep_desaturation_3pct_events_per_sleep_hour_proxy": 14.5,
                 "desaturation_3pct_events_per_sleep_hour_proxy": 99.9,
                 "time_below_90pct_pct_sleep": 2.5,
@@ -276,9 +305,11 @@ def test_clinical_indicators_include_oxygen_proxy_when_available():
     indicators = clinical_indicators(metrics, quality, oxygen)
     oxygen_row = indicators[indicators["indicator"] == "spo2_desaturation_burden"].iloc[0]
 
-    assert oxygen_row["status"] == "oxygen_proxy_available"
-    assert "14.5" in oxygen_row["evidence"]
+    assert oxygen_row["status"] == "oxygen_desaturation_available"
+    assert "12.5" in oxygen_row["evidence"]
+    assert "7.5" in oxygen_row["evidence"]
     assert "2.5" in oxygen_row["evidence"]
+    assert "14.5" not in oxygen_row["evidence"]
     assert "99.9" not in oxygen_row["evidence"]
     assert "88.8" not in oxygen_row["evidence"]
 

@@ -38,11 +38,12 @@ Implemented in this phase:
 - Marked `slp41` and `slp45` as source-AHI-estimated records with apnea annotations unavailable.
 - Split SO2 oxygen summaries into recording-wide audit values and sleep-only proxy values, and updated clinical indicators to use the sleep-only oxygen evidence.
 - Added source AHI alignment audit CSVs and report tables that prioritize records needing manual scoring-rule review.
+- Replaced the main sleep-only oxygen proxy with a documented pre-event rolling-baseline ODI scorer while retaining legacy proxy columns for audit.
 
 Remaining:
 
 - Manually adjudicate the high-priority source AHI alignment records against source scoring rules.
-- Formalize oxygen desaturation scoring instead of relying on sleep-only percentile-baseline proxy counts.
+- Review the pre-event-baseline ODI scorer against artifacts and event-level waveform windows.
 - Decide whether MIT-BIH PSG is sufficient for education or whether a richer PSG dataset is needed for clinical-style examples.
 - Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
 
@@ -50,7 +51,7 @@ Remaining:
 
 1. Review the high-priority rows in `results/mit_bih_psg/complete_record_source_ahi_alignment.csv`.
 2. Tighten event definitions if the project should approximate clinical AHI more closely.
-3. Replace the current sleep-only proxy oxygen desaturation counting with a documented scoring rule.
+3. Review ODI scorer artifacts and decide whether airflow/arousal adjudication needs a richer PSG dataset.
 4. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
 5. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
 

@@ -86,6 +86,7 @@ oxygen:
     - 3
     - 4
   min_desaturation_seconds: 10
+  desaturation_baseline_window_seconds: 120
   low_spo2_thresholds_pct:
     - 90
     - 88

@@ -42,13 +42,13 @@ The selected records include respiration channels, but no SpO2/oximetry channels
 
 ## Oxygen Saturation
 
-SO2 metrics are computed only when an oximetry channel is present. The report table uses sleep-only low-oxygen and ODI proxy values; recording-wide oxygen summaries remain in the CSV for audit. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
+SO2 metrics are computed only when an oximetry channel is present. The report table uses sleep-only ODI values from a documented pre-event rolling-baseline desaturation rule; recording-wide and legacy percentile-proxy oxygen summaries remain in the CSV for audit. This is oxygen-only evidence, not full hypopnea scoring because airflow reduction and arousal rules are not adjudicated here.
 
-| record | SO2 channel | status | median % | min % | below 90 % | below 90 % sleep | ODI 3% proxy | ODI 4% proxy |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| slp01a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
-| slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
-| slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
+| record | SO2 channel | status | median % | min % | below 90 % | below 90 % sleep | ODI 3% | ODI 4% | rule |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp01a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA | pre_event_rolling_baseline |
+| slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA | pre_event_rolling_baseline |
+| slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA | NA | pre_event_rolling_baseline |
 
 ## Event-Level Waveform Review
 
@@ -106,14 +106,15 @@ Generated event plots:
 - The core disease-style output is `ahi_style_events_per_sleep_hour`: respiratory event annotations divided by sleep hours.
 - Adult AHI learning bands used here are: <5 minimal, 5-14 mild, 15-29 moderate, and >=30 severe events per sleep hour.
 - A real clinical conclusion still needs scoring-rule context, symptoms, waveform review, oxygen desaturation, arousals, comorbidities, and clinician review.
-- SO2-derived desaturation metrics add oxygenation evidence, but artifact review and clinical scoring rules are still required before diagnostic use.
+- SO2-derived desaturation metrics add oxygenation evidence, but artifact review, airflow reduction, arousal scoring, and clinician interpretation are still required before diagnostic use.
 - Treatment reasoning should be framed as questions: whether OSA evidence supports PAP evaluation, oral-appliance discussion, weight/lifestyle work, positional therapy, surgery referral, or another diagnosis.
 
 ## Next Data Step
 
-Next, manually adjudicate the high-priority source AHI alignment rows, replace the sleep-only oxygen proxy with a documented scoring rule, and then decide whether a richer PSG dataset is needed for clinical-style examples.
+Next, manually adjudicate the high-priority source AHI alignment rows, review the pre-event-baseline ODI scorer against artifacts and event windows, and then decide whether a richer PSG dataset is needed for clinical-style examples.
 
 ## Source Notes
 
 - PhysioNet MIT-BIH PSG: https://physionet.org/content/slpdb/ and signal/annotation notes at https://archive.physionet.org/physiobank/database/slpdb/slpdb.shtml
 - AHI bands cross-check: Cleveland Clinic AHI ranges, https://my.clevelandclinic.org/health/articles/apnea-hypopnea-index-ahi
+- Hypopnea scoring context: AASM-recommended adult hypopnea criteria use airflow reduction plus 3% oxygen desaturation or arousal, while CMS-style scoring uses 4% oxygen desaturation; this report computes oxygen-only ODI signals, not full hypopnea events. https://doi.org/10.5664/jcsm.9952
