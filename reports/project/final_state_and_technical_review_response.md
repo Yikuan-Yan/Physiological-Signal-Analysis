@@ -157,7 +157,7 @@ These are the remaining gaps if the project is resumed later:
 4. The ODI scorer is a documented project-defined proxy, not a validated clinical ODI implementation.
 5. The release bundle prevents same-name directory contamination but is not yet a complete offline reproducibility snapshot.
 6. The repo has no SBOM, dependency audit report, signed release checksums, or production supply-chain workflow.
-7. Some generated reports still contain older pilot-oriented reproduction text; current canonical state is better represented by this document, `reports/project/repo_work_summary.md`, and the latest validation commands above.
+7. Some generated reports still contain older pilot-oriented reproduction text; current canonical state is better represented by this document, `reports/project/project_state_summary.md`, and the latest validation commands above.
 8. Domain modules remain larger than ideal, so future maintenance would benefit from splitting metrics, policy, plotting, reporting, and orchestration into smaller modules.
 9. There is no stable public API guarantee; CLI and file schemas should still be treated as research-prototype interfaces.
 10. The project should not be presented as clinical decision support, production deployment, or validated medical software.
