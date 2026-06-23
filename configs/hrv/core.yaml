@@ -1,7 +1,7 @@
 dataset:
   name: Fantasia Database
   version: 1.0.0
-  manifest: data_manifest.csv
+  manifest: data/manifests/fantasia.csv
   raw_dir: data/raw/fantasia/1.0.0
 
 records:
@@ -75,14 +75,14 @@ artifact_experiment:
   ectopic_shift_fraction: 0.3
 
 outputs:
-  inventory_csv: results/data_quality/fantasia_inventory.csv
-  peak_benchmark_csv: results/peak_benchmark/peak_benchmark_by_record.csv
-  failure_plot_dir: figures/peak_failures
-  reference_intervals_csv: results/rr_nn/reference_intervals.csv
-  window_metrics_csv: results/rr_nn/window_metrics.csv
-  artifact_sensitivity_csv: results/artifacts/artifact_sensitivity.csv
-  artifact_summary_csv: results/artifacts/artifact_summary.csv
-  frequency_window_metrics_csv: results/hrv_frequency/frequency_window_metrics.csv
-  hrv_record_summary_csv: results/hrv_frequency/hrv_record_summary.csv
-  hrv_uncertainty_csv: results/hrv_frequency/hrv_uncertainty.csv
-  hrv_core_report_md: reports/hrv_core_report.md
+  inventory_csv: results/hrv/data_quality/fantasia_inventory.csv
+  peak_benchmark_csv: results/hrv/peak_benchmark/peak_benchmark_by_record.csv
+  failure_plot_dir: figures/hrv/peak_failures
+  reference_intervals_csv: results/hrv/rr_nn/reference_intervals.csv
+  window_metrics_csv: results/hrv/rr_nn/window_metrics.csv
+  artifact_sensitivity_csv: results/hrv/artifacts/artifact_sensitivity.csv
+  artifact_summary_csv: results/hrv/artifacts/artifact_summary.csv
+  frequency_window_metrics_csv: results/hrv/frequency/frequency_window_metrics.csv
+  hrv_record_summary_csv: results/hrv/frequency/hrv_record_summary.csv
+  hrv_uncertainty_csv: results/hrv/frequency/hrv_uncertainty.csv
+  hrv_core_report_md: reports/hrv/core_report.md

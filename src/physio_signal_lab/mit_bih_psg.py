@@ -86,7 +86,7 @@ def _scoped_mit_bih_output_path(output_prefix: str, suffix: str) -> Path:
 
 def _scoped_mit_bih_report_path(output_prefix: str, suffix: str) -> Path:
     prefix = clean_output_prefix(output_prefix)
-    return Path("reports") / f"mit_bih_psg_{prefix}_{suffix}"
+    return Path("reports") / "mit_bih_psg" / f"{prefix}_{suffix}"
 
 
 def _output_paths(
@@ -123,7 +123,7 @@ def _output_paths(
             "dataset_decision_md": Path(
                 outputs.get(
                     "dataset_decision_md",
-                    "reports/mit_bih_psg_dataset_decision.md",
+                    "reports/mit_bih_psg/pilot_dataset_decision.md",
                 )
             ),
             "event_plot_dir": Path(outputs["event_plot_dir"]),

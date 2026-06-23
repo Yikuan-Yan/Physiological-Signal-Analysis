@@ -39,17 +39,17 @@ This is not a publication claim-review plan. The goal is to understand what the 
 ## Current Commands
 
 ```bash
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011 --output-prefix pilot --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --output-prefix five_record --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071 --output-prefix eight_record --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
-uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101,SC4111,SC4121,SC4131,SC4141,SC4151,SC4161,SC4171,SC4181,SC4191 --output-prefix twenty_record --include-yasa
-uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg.yaml --records slp01a,slp02a,slp03
-uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg.yaml --records slp59,slp60,slp61,slp66,slp67x --output-prefix oxygen_record
-uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg.yaml --output-prefix all_record
-uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg.yaml --output-prefix complete_record
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf/default.yaml --records SC4001,SC4011 --output-prefix pilot --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --output-prefix five_record --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071 --output-prefix eight_record --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101 --output-prefix eleven_record --include-yasa
+uv run python -m physio_signal_lab.cli run-sleep-edf-clinical-education --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041,SC4051,SC4061,SC4071,SC4081,SC4091,SC4101,SC4111,SC4121,SC4131,SC4141,SC4151,SC4161,SC4171,SC4181,SC4191 --output-prefix twenty_record --include-yasa
+uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg/default.yaml --records slp01a,slp02a,slp03
+uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg/default.yaml --records slp59,slp60,slp61,slp66,slp67x --output-prefix oxygen_record
+uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg/default.yaml --output-prefix all_record
+uv run python -m physio_signal_lab.cli run-mit-bih-psg-respiratory-pilot --config configs/mit_bih_psg/default.yaml --output-prefix complete_record
 ```
 
 ## Next Dataset Direction
 
-MIT-BIH PSG is now integrated for respiratory-event and sleep-aligned SO2 oxygenation learning across all 18 records. Use `reports/mit_bih_psg_complete_record_dataset_decision.md` and `reports/respiratory_dataset_candidates.md` to drive source AHI alignment, SO2 artifact review, and any later richer-PSG dataset decision.
+MIT-BIH PSG is now integrated for respiratory-event and sleep-aligned SO2 oxygenation learning across all 18 records. Use `reports/mit_bih_psg/complete_record_dataset_decision.md` and `reports/project/respiratory_dataset_candidates.md` to drive source AHI alignment, SO2 artifact review, and any later richer-PSG dataset decision.

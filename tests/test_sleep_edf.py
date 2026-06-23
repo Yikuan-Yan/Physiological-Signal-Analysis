@@ -396,10 +396,10 @@ def test_clinical_question_ranking_prioritizes_low_continuity():
 
 
 def test_run_sleep_edf_preflight_writes_selection_manifest_and_report(tmp_path):
-    config = load_config("configs/sleep_edf.yaml")
+    config = load_config("configs/sleep_edf/default.yaml")
     config["outputs"] = {
         "selection_csv": str(tmp_path / "results" / "sleep_edf_selection.csv"),
-        "manifest_csv": str(tmp_path / "data_manifest_sleep_edf.csv"),
+        "manifest_csv": str(tmp_path / "data/manifests/sleep_edf.csv"),
         "preflight_report_md": str(tmp_path / "reports" / "sleep_edf_preflight.md"),
     }
 

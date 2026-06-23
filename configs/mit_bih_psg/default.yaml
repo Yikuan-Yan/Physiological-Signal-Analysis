@@ -5,7 +5,7 @@ dataset:
   license: Open Data Commons Attribution License v1.0
   source_base_url: https://physionet.org/files/slpdb/1.0.0
   raw_dir: data/raw/mit-bih-psg/1.0.0
-  manifest: data_manifest_mit_bih_psg.csv
+  manifest: data/manifests/mit_bih_psg.csv
   access_date: 2026-06-23
 
 selection:
@@ -98,7 +98,7 @@ event_review:
   plot_events_per_record: 2
 
 outputs:
-  manifest_csv: data_manifest_mit_bih_psg.csv
+  manifest_csv: data/manifests/mit_bih_psg.csv
   download_summary_csv: results/mit_bih_psg/download_summary.csv
   validation_csv: results/mit_bih_psg/validation.csv
   annotation_epochs_csv: results/mit_bih_psg/pilot_annotation_epochs.csv
@@ -111,5 +111,5 @@ outputs:
   event_plot_dir: figures/mit_bih_psg
   channel_quality_csv: results/mit_bih_psg/pilot_channel_quality.csv
   clinical_indicators_csv: results/mit_bih_psg/pilot_clinical_indicators.csv
-  report_md: reports/mit_bih_psg_respiratory_pilot.md
-  dataset_decision_md: reports/mit_bih_psg_dataset_decision.md
+  report_md: reports/mit_bih_psg/pilot_respiratory_pilot.md
+  dataset_decision_md: reports/mit_bih_psg/pilot_dataset_decision.md

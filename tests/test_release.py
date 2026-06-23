@@ -16,13 +16,13 @@ def _write(path: Path, text: str = "x\n") -> Path:
 
 
 def test_build_release_bundle_copies_core_files_and_excludes_raw_data(tmp_path):
-    config_path = _write(tmp_path / "configs" / "hrv_core.yaml", "dataset: {}\n")
-    manifest_path = _write(tmp_path / "data_manifest.csv", "local_path\nraw.dat\n")
-    report_path = _write(tmp_path / "reports" / "hrv_core_report.md", "# HRV Core Report\n")
+    config_path = _write(tmp_path / "configs" / "hrv" / "core.yaml", "dataset: {}\n")
+    manifest_path = _write(tmp_path / "data/manifests/fantasia.csv", "local_path\nraw.dat\n")
+    report_path = _write(tmp_path / "reports" / "hrv" / "core_report.md", "# HRV Core Report\n")
 
     outputs = {
         "hrv_core_report_md": str(report_path),
-        "failure_plot_dir": str(tmp_path / "figures" / "peak_failures"),
+        "failure_plot_dir": str(tmp_path / "figures" / "hrv" / "peak_failures"),
     }
     for key in CORE_RESULT_OUTPUT_KEYS:
         outputs[key] = str(_write(tmp_path / "results" / f"{key}.csv", "metric,value\nx,1\n"))
@@ -43,9 +43,9 @@ def test_build_release_bundle_copies_core_files_and_excludes_raw_data(tmp_path):
         output_root=tmp_path / "releases",
     )
 
-    assert (release_dir / "config" / "hrv_core.yaml").exists()
-    assert (release_dir / "manifest" / "data_manifest.csv").exists()
-    assert (release_dir / "report" / "hrv_core_report.md").exists()
+    assert (release_dir / "config" / "core.yaml").exists()
+    assert (release_dir / "manifest" / "fantasia.csv").exists()
+    assert (release_dir / "report" / "core_report.md").exists()
     assert (release_dir / "environment.txt").exists()
     assert (release_dir / "artifact_checksums.csv").exists()
 
@@ -58,9 +58,9 @@ def test_build_release_bundle_copies_core_files_and_excludes_raw_data(tmp_path):
     assert {row["role"] for row in rows} >= {"config", "manifest", "report", "environment"}
     bundled_paths = {row["bundled_path"] for row in rows if row["bundled_path"]}
     assert bundled_paths >= {
-        "config/hrv_core.yaml",
-        "manifest/data_manifest.csv",
-        "report/hrv_core_report.md",
+        "config/core.yaml",
+        "manifest/fantasia.csv",
+        "report/core_report.md",
         "environment.txt",
     }
     assert not list(release_dir.rglob("*.dat"))

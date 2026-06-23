@@ -22,4 +22,4 @@ def scoped_sleep_edf_output_path(output_prefix: str, suffix: str) -> Path:
 
 def scoped_sleep_edf_report_path(output_prefix: str, suffix: str) -> Path:
     prefix = clean_output_prefix(output_prefix)
-    return Path("reports") / f"sleep_edf_{prefix}_{suffix}"
+    return Path("reports") / "sleep_edf" / f"{prefix}_{suffix}"

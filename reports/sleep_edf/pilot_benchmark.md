@@ -49,10 +49,10 @@ YASA staging was run with the frozen channel settings and aligned to the same in
 
 ```bash
 uv sync --extra sleep --extra dev
-uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4001,SC4011
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011
+uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf/default.yaml --records SC4001,SC4011
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf/default.yaml --records SC4001,SC4011
 uv sync --python 3.12 --extra sleep --extra dev
-uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011 --include-yasa
+uv run --python 3.12 --extra sleep python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf/default.yaml --records SC4001,SC4011 --include-yasa
 ```
 
 ## Next Step

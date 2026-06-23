@@ -6,7 +6,7 @@ dataset:
   source_base_url: https://physionet.org/files/sleep-edfx/1.0.0
   cassette_index_url: https://physionet.org/files/sleep-edfx/1.0.0/sleep-cassette/
   raw_dir: data/raw/sleep-edfx/1.0.0
-  manifest: data_manifest_sleep_edf.csv
+  manifest: data/manifests/sleep_edf.csv
 
 cohort:
   include: sleep-cassette
@@ -74,7 +74,7 @@ yasa:
 
 outputs:
   selection_csv: results/sleep_edf/sleep_edf_selection.csv
-  manifest_csv: data_manifest_sleep_edf.csv
+  manifest_csv: data/manifests/sleep_edf.csv
   download_summary_csv: results/sleep_edf/download_summary.csv
   validation_csv: results/sleep_edf/sleep_edf_validation.csv
   epoch_labels_csv: results/sleep_edf/pilot_epoch_labels.csv
@@ -84,6 +84,6 @@ outputs:
   yasa_probabilities_csv: results/sleep_edf/pilot_yasa_probabilities.csv
   yasa_metrics_csv: results/sleep_edf/pilot_yasa_metrics.csv
   yasa_profile_csv: results/sleep_edf/yasa_runtime_profile.csv
-  preflight_report_md: reports/sleep_edf_preflight.md
-  pilot_benchmark_report_md: reports/sleep_edf_pilot_benchmark.md
-  yasa_profile_report_md: reports/sleep_edf_yasa_profile.md
+  preflight_report_md: reports/sleep_edf/preflight.md
+  pilot_benchmark_report_md: reports/sleep_edf/pilot_benchmark.md
+  yasa_profile_report_md: reports/sleep_edf/yasa_profile.md

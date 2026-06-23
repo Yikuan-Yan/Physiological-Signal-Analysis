@@ -189,7 +189,7 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
         "## Dataset and Protocol",
         "",
         f"- Dataset: {config['dataset']['name']} v{config['dataset']['version']}.",
-        "- License: Open Data Commons Attribution License v1.0, as recorded in data_manifest.csv.",
+        "- License: Open Data Commons Attribution License v1.0, as recorded in `data/manifests/fantasia.csv`.",
         f"- Records analyzed: {len(inventory)} total; "
         f"{int((inventory['cohort'] == 'young').sum())} young and "
         f"{int((inventory['cohort'] == 'old').sum())} old.",
@@ -209,8 +209,8 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
         "",
         "```bash",
         "uv sync --frozen --extra dev",
-        "uv run python -m physio_signal_lab.cli validate-data --manifest data_manifest.csv",
-        "uv run python -m physio_signal_lab.cli run-ecg-core --config configs/hrv_core.yaml",
+        "uv run python -m physio_signal_lab.cli validate-data --manifest data/manifests/fantasia.csv",
+        "uv run python -m physio_signal_lab.cli run-ecg-core --config configs/hrv/core.yaml",
         "uv run pytest -q",
         "```",
         "",
@@ -233,7 +233,7 @@ def build_hrv_core_report(config: dict[str, Any]) -> str:
         "",
         _markdown_table(_top_worst_peak_rows(peak), ["record", "F1", "FP", "FN", "median abs error"]),
         "",
-        "Worst-case overlay plots are stored in `figures/peak_failures/`.",
+        "Worst-case overlay plots are stored in `figures/hrv/peak_failures/`.",
         "",
         "## RR and NN Intervals",
         "",

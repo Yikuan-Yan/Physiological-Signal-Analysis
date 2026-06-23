@@ -12,7 +12,7 @@ from physio_signal_lab.manifest import validate_manifest
 
 
 ROOT = Path("data/raw/fantasia/1.0.0")
-MANIFEST = Path("data_manifest.csv")
+MANIFEST = Path("data/manifests/fantasia.csv")
 
 
 pytestmark = pytest.mark.skipif(

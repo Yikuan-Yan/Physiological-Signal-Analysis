@@ -9,7 +9,7 @@ This report does not make medical, diagnostic, risk-scoring, personal baseline, 
 ## Dataset and Protocol
 
 - Dataset: Fantasia Database v1.0.0.
-- License: Open Data Commons Attribution License v1.0, as recorded in data_manifest.csv.
+- License: Open Data Commons Attribution License v1.0, as recorded in `data/manifests/fantasia.csv`.
 - Records analyzed: 40 total; 20 young and 20 old.
 - Sex balance: {'F': 20, 'M': 20}.
 - Age range: 21-85 years.
@@ -23,8 +23,8 @@ From a fresh environment with the raw Fantasia files already present under `data
 
 ```bash
 uv sync --frozen --extra dev
-uv run python -m physio_signal_lab.cli validate-data --manifest data_manifest.csv
-uv run python -m physio_signal_lab.cli run-ecg-core --config configs/hrv_core.yaml
+uv run python -m physio_signal_lab.cli validate-data --manifest data/manifests/fantasia.csv
+uv run python -m physio_signal_lab.cli run-ecg-core --config configs/hrv/core.yaml
 uv run pytest -q
 ```
 
@@ -48,7 +48,7 @@ The official `.ecg` annotations are treated as reference annotations, not absolu
 | f2y09 | 0.9859 | 65 | 182 | 4.0 ms |
 | f2o09 | 0.9860 | 152 | 22 | 28.0 ms |
 
-Worst-case overlay plots are stored in `figures/peak_failures/`.
+Worst-case overlay plots are stored in `figures/hrv/peak_failures/`.
 
 ## RR and NN Intervals
 

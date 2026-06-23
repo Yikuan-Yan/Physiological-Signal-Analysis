@@ -65,9 +65,9 @@ Current validation summary:
 
 Eight-record outputs:
 
-- `reports/sleep_edf_eight_record_yasa_profile.md`
-- `reports/sleep_edf_eight_record_benchmark.md`
-- `reports/sleep_edf_eight_record_clinical_education.md`
+- `reports/sleep_edf/eight_record_yasa_profile.md`
+- `reports/sleep_edf/eight_record_benchmark.md`
+- `reports/sleep_edf/eight_record_clinical_education.md`
 - `results/sleep_edf/eight_record_yasa_runtime_profile.csv`
 - `results/sleep_edf/eight_record_yasa_metrics.csv`
 - `results/sleep_edf/eight_record_sleep_quality_metrics.csv`
@@ -85,9 +85,9 @@ Eleven-record YASA benchmark:
 
 Eleven-record outputs:
 
-- `reports/sleep_edf_eleven_record_yasa_profile.md`
-- `reports/sleep_edf_eleven_record_benchmark.md`
-- `reports/sleep_edf_eleven_record_clinical_education.md`
+- `reports/sleep_edf/eleven_record_yasa_profile.md`
+- `reports/sleep_edf/eleven_record_benchmark.md`
+- `reports/sleep_edf/eleven_record_clinical_education.md`
 - `results/sleep_edf/eleven_record_yasa_runtime_profile.csv`
 - `results/sleep_edf/eleven_record_yasa_metrics.csv`
 - `results/sleep_edf/eleven_record_sleep_quality_metrics.csv`
@@ -105,9 +105,9 @@ Twenty-record YASA benchmark:
 
 Twenty-record outputs:
 
-- `reports/sleep_edf_twenty_record_yasa_profile.md`
-- `reports/sleep_edf_twenty_record_benchmark.md`
-- `reports/sleep_edf_twenty_record_clinical_education.md`
+- `reports/sleep_edf/twenty_record_yasa_profile.md`
+- `reports/sleep_edf/twenty_record_benchmark.md`
+- `reports/sleep_edf/twenty_record_clinical_education.md`
 - `results/sleep_edf/twenty_record_yasa_runtime_profile.csv`
 - `results/sleep_edf/twenty_record_yasa_metrics.csv`
 - `results/sleep_edf/twenty_record_sleep_quality_metrics.csv`
@@ -125,7 +125,7 @@ Five-record YASA benchmark:
 
 Five-record clinical-learning outputs:
 
-- `reports/sleep_edf_five_record_clinical_education.md`
+- `reports/sleep_edf/five_record_clinical_education.md`
 - `results/sleep_edf/five_record_sleep_quality_metrics.csv`
 - `results/sleep_edf/five_record_clinical_indicators.csv`
 - `results/sleep_edf/five_record_clinical_question_ranking.csv`
@@ -168,7 +168,7 @@ MIT-BIH PSG is now the active disease-specific respiratory reasoning track.
 
 Implementation outline:
 
-1. Done: add `configs/mit_bih_psg.yaml`.
+1. Done: add `configs/mit_bih_psg/default.yaml`.
 2. Done: download a small MIT-BIH PSG pilot subset.
 3. Done: parse sleep/apnea annotations.
 4. Done: compute apnea annotation burden per sleep hour.

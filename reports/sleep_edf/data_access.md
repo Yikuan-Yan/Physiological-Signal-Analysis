@@ -16,8 +16,8 @@ This data-access stage verifies the selected Sleep-EDF pilot subset after the pr
 ## Validation
 
 ```bash
-uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf.yaml --records SC4001,SC4011
-uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf.yaml --records SC4001,SC4011
+uv run python -m physio_signal_lab.cli download-sleep-edf --config configs/sleep_edf/default.yaml --records SC4001,SC4011
+uv run python -m physio_signal_lab.cli validate-sleep-edf --config configs/sleep_edf/default.yaml --records SC4001,SC4011
 ```
 
 The pilot validation output reported:
@@ -27,7 +27,7 @@ The pilot validation output reported:
 - checksum mismatches: 0
 - bytes: 99,457,092
 
-The pilot SHA256 values are recorded in `data_manifest_sleep_edf.csv`. The remaining frozen benchmark records keep blank SHA256 values until those raw files are downloaded.
+The pilot SHA256 values are recorded in `data/manifests/sleep_edf.csv`. The remaining frozen benchmark records keep blank SHA256 values until those raw files are downloaded.
 
 ## Current Boundary
 

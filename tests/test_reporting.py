@@ -7,15 +7,15 @@ from physio_signal_lab.reporting import build_hrv_core_report, write_hrv_core_re
 
 
 REQUIRED_RESULTS = [
-    Path("results/data_quality/fantasia_inventory.csv"),
-    Path("results/peak_benchmark/peak_benchmark_by_record.csv"),
-    Path("results/rr_nn/reference_intervals.csv"),
-    Path("results/rr_nn/window_metrics.csv"),
-    Path("results/artifacts/artifact_sensitivity.csv"),
-    Path("results/artifacts/artifact_summary.csv"),
-    Path("results/hrv_frequency/frequency_window_metrics.csv"),
-    Path("results/hrv_frequency/hrv_record_summary.csv"),
-    Path("results/hrv_frequency/hrv_uncertainty.csv"),
+    Path("results/hrv/data_quality/fantasia_inventory.csv"),
+    Path("results/hrv/peak_benchmark/peak_benchmark_by_record.csv"),
+    Path("results/hrv/rr_nn/reference_intervals.csv"),
+    Path("results/hrv/rr_nn/window_metrics.csv"),
+    Path("results/hrv/artifacts/artifact_sensitivity.csv"),
+    Path("results/hrv/artifacts/artifact_summary.csv"),
+    Path("results/hrv/frequency/frequency_window_metrics.csv"),
+    Path("results/hrv/frequency/hrv_record_summary.csv"),
+    Path("results/hrv/frequency/hrv_uncertainty.csv"),
 ]
 
 
@@ -26,7 +26,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def test_build_hrv_core_report_contains_gate_and_limitations():
-    config = load_config("configs/hrv_core.yaml")
+    config = load_config("configs/hrv/core.yaml")
     report = build_hrv_core_report(config)
     assert "# HRV Core Report" in report
     assert "Core Gate Decision" in report
@@ -36,7 +36,7 @@ def test_build_hrv_core_report_contains_gate_and_limitations():
 
 
 def test_write_hrv_core_report(tmp_path):
-    config = load_config("configs/hrv_core.yaml")
+    config = load_config("configs/hrv/core.yaml")
     out = tmp_path / "hrv_core_report.md"
     written = write_hrv_core_report(config, out)
     assert written == out

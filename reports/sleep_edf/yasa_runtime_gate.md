@@ -15,7 +15,7 @@ The bounded child-process profile completed for both pilot records:
 | SC4001 | full night | 180 s | 58.617 | 2650 | completed |
 | SC4011 | full night | 180 s | 55.327 | 2802 | completed |
 
-Detailed timings are stored in `results/sleep_edf/yasa_runtime_profile.csv`, with the generated summary in `reports/sleep_edf_yasa_profile.md`.
+Detailed timings are stored in `results/sleep_edf/yasa_runtime_profile.csv`, with the generated summary in `reports/sleep_edf/yasa_profile.md`.
 
 The scoped five-record profile also completed:
 
@@ -23,7 +23,7 @@ The scoped five-record profile also completed:
 | --- | --- | --- | --- |
 | five_record | SC4001-SC4041 | 180 s per record | completed |
 
-Detailed timings are stored in `results/sleep_edf/five_record_yasa_runtime_profile.csv`, with the generated summary in `reports/sleep_edf_five_record_yasa_profile.md`.
+Detailed timings are stored in `results/sleep_edf/five_record_yasa_runtime_profile.csv`, with the generated summary in `reports/sleep_edf/five_record_yasa_profile.md`.
 
 ## Benchmark Result
 
@@ -32,7 +32,7 @@ The opt-in YASA benchmark completed and wrote aligned predictions, probabilities
 - `results/sleep_edf/pilot_yasa_predictions.csv`
 - `results/sleep_edf/pilot_yasa_probabilities.csv`
 - `results/sleep_edf/pilot_yasa_metrics.csv`
-- `reports/sleep_edf_pilot_benchmark.md`
+- `reports/sleep_edf/pilot_benchmark.md`
 
 Pilot-level YASA metrics:
 
@@ -54,10 +54,10 @@ YASA 0.7.0 emits a scikit-learn `InconsistentVersionWarning` because its bundled
 
 ```bash
 uv sync --python 3.12 --extra sleep --extra dev
-uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011 --full-night --timeout-seconds 180
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011 --include-yasa
-uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --full-night --timeout-seconds 180 --output-prefix five_record
-uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --output-prefix five_record --include-yasa
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf/default.yaml --records SC4001,SC4011 --full-night --timeout-seconds 180
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf/default.yaml --records SC4001,SC4011 --include-yasa
+uv run python -m physio_signal_lab.cli profile-yasa-runtime --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --full-night --timeout-seconds 180 --output-prefix five_record
+uv run python -m physio_signal_lab.cli run-sleep-edf-pilot-benchmark --config configs/sleep_edf/default.yaml --records SC4001,SC4011,SC4021,SC4031,SC4041 --output-prefix five_record --include-yasa
 ```
 
 ## Next Decision

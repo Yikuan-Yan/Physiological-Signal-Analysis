@@ -19,24 +19,24 @@ The next disease-focused phase should add a dataset with respiratory signals, ox
 
 Keep MIT-BIH PSG as the active respiratory clinical-learning dataset. Do not automatically download a richer PSG dataset yet; first complete source-AHI alignment review and SO2 artifact review.
 
-Use `reports/mit_bih_psg_complete_record_dataset_decision.md` and `results/mit_bih_psg/complete_record_dataset_readiness.csv` as the current gate output. Add UCDDB, SHHS, or another richer PSG dataset only if the next question requires arousal-linked scoring, richer airflow/effort/oximetry cross-checks, population-scale clinical context, or source-provided respiratory indices that MIT-BIH cannot support.
+Use `reports/mit_bih_psg/complete_record_dataset_decision.md` and `results/mit_bih_psg/complete_record_dataset_readiness.csv` as the current gate output. Add UCDDB, SHHS, or another richer PSG dataset only if the next question requires arousal-linked scoring, richer airflow/effort/oximetry cross-checks, population-scale clinical context, or source-provided respiratory indices that MIT-BIH cannot support.
 
 ## Current Implementation Status
 
 Implemented in this phase:
 
-- Added `configs/mit_bih_psg.yaml`.
+- Added `configs/mit_bih_psg/default.yaml`.
 - Added MIT-BIH PSG download and validation commands.
 - Added a pilot subset with `slp01a`, `slp02a`, and `slp03`.
 - Added `.st` sleep/apnea annotation parsing.
 - Added AHI-style annotation burden per sleep hour.
 - Added respiration and SpO2 channel availability/quality checks.
-- Added `reports/mit_bih_psg_respiratory_pilot.md` for respiratory-event clinical learning.
+- Added `reports/mit_bih_psg/pilot_respiratory_pilot.md` for respiratory-event clinical learning.
 - Added SO2-channel records `slp59`, `slp60`, `slp61`, `slp66`, and `slp67x`.
 - Added oxygen desaturation metrics and event-level waveform review plots.
-- Added `reports/mit_bih_psg_oxygen_record_respiratory_pilot.md` and `reports/mit_bih_psg_all_record_respiratory_pilot.md`.
+- Added `reports/mit_bih_psg/oxygen_record_respiratory_pilot.md` and `reports/mit_bih_psg/all_record_respiratory_pilot.md`.
 - Downloaded and validated all 18 MIT-BIH PSG WFDB records.
-- Added `reports/mit_bih_psg_complete_record_respiratory_pilot.md`.
+- Added `reports/mit_bih_psg/complete_record_respiratory_pilot.md`.
 - Marked `slp41` and `slp45` as source-AHI-estimated records with apnea annotations unavailable.
 - Split SO2 oxygen summaries into recording-wide audit values and sleep-only proxy values, and updated clinical indicators to use the sleep-only oxygen evidence.
 - Added source AHI alignment audit CSVs and report tables that prioritize records needing manual scoring-rule review.
