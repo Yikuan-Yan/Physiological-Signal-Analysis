@@ -21,8 +21,9 @@ This is not a publication claim-review plan. The goal is to understand what the 
 11. Done: add event-level waveform windows and plots around scored respiratory-event epochs.
 12. Done: run the complete 18-record MIT-BIH PSG report.
 13. Done: align SO2 oxygen proxy metrics to sleep epochs while retaining recording-wide audit columns.
-14. Next: manually reconcile simple annotation-token burden against source AHI and clinical scoring rules.
-15. Next: formalize oxygen desaturation scoring and decide whether to add a richer PSG dataset.
+14. Done: add source AHI alignment audit outputs for high-priority manual review.
+15. Next: manually adjudicate high-priority alignment rows against source AHI scoring rules.
+16. Next: formalize oxygen desaturation scoring and decide whether to add a richer PSG dataset.
 
 ## Diagnostic Reasoning Boundaries
 

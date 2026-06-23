@@ -35,6 +35,31 @@ It is an educational analysis, not a diagnosis, prescription, or triage tool.
 | slp66 | 2.20 | 219 | 99.5 | severe range | 65.5 |  | 34.0 | 5.9 | 0.0 | 93.6 |
 | slp67x | 0.68 | 54 | 79.0 | severe range | 0.7 |  | 78.3 | 17.6 | 55.6 | 5.9 |
 
+## Source AHI Alignment Review
+
+This table compares the simple annotation-token burden against the source reported AHI table. It is an audit view for educational alignment, not a replacement for scorer rules or clinical adjudication.
+
+| record | annotation/h | source AHI | delta | status | priority | dominant event | review focus |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| slp67x | 79.0 | 0.7 | 78.3 | needs_manual_review | manual_review_high | central_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp66 | 99.5 | 65.5 | 34.0 | needs_manual_review | manual_review_high | hypopnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp32 | 53.7 | 22.1 | 31.6 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp16 | 80.0 | 53.1 | 26.9 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp60 | 82.4 | 59.2 | 23.2 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp14 | 52.0 | 30.7 | 21.3 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp01b | 40.0 | 22.3 | 17.7 | needs_manual_review | manual_review_high | hypopnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp59 | 69.4 | 55.3 | 14.1 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp48 | 60.9 | 46.8 | 14.1 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp04 | 72.9 | 59.8 | 13.1 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp41 | 0.0 | 60.0 | -60.0 | source_ahi_estimated_annotation_unavailable | separate_source_review | none | Source AHI is estimated and apnea annotations are unavailable; do not interpret annotation burden as true no-OSA evidence. |
+| slp45 | 0.0 | 5.0 | -5.0 | source_ahi_estimated_annotation_unavailable | separate_source_review | none | Source AHI is estimated and apnea annotations are unavailable; do not interpret annotation burden as true no-OSA evidence. |
+| slp03 | 52.7 | 43.0 | 9.7 | roughly_aligned | manual_review_medium | hypopnea | Review scoring assumptions if this record is used as an example. |
+| slp37 | 109.2 | 100.8 | 8.4 | roughly_aligned | manual_review_medium | obstructive_apnea | Review scoring assumptions if this record is used as an example. |
+| slp61 | 49.1 | 41.2 | 7.9 | roughly_aligned | manual_review_medium | obstructive_apnea | Review scoring assumptions if this record is used as an example. |
+| slp02a | 31.2 | 34.0 | -2.8 | roughly_aligned | low | obstructive_apnea | Token burden is close enough for the current educational proxy. |
+| slp01a | 19.1 | 17.0 | 2.1 | roughly_aligned | low | hypopnea | Token burden is close enough for the current educational proxy. |
+| slp02b | 20.7 | 22.2 | -1.5 | roughly_aligned | low | obstructive_apnea | Token burden is close enough for the current educational proxy. |
+
 ## Channel Quality
 
 Some selected records include SO2/oximetry channels (slp59, slp60, slp61, slp66, slp67x); records without SO2 keep oxygen metrics unavailable.

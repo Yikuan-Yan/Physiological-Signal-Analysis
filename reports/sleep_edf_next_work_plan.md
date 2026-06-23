@@ -22,6 +22,7 @@ Completed:
 - Eleven-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4101`.
 - Twenty-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4191`.
 - Sleep-only MIT-BIH SO2 proxy metrics so oxygen evidence is aligned to sleep epochs instead of whole-recording counts.
+- MIT-BIH source AHI alignment audit outputs for prioritizing manual scoring-rule review.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -174,9 +175,10 @@ Implementation outline:
 8. Done: generate event-level waveform windows and plots around scored respiratory events.
 9. Done: run the 18-record `complete_record` MIT-BIH report.
 10. Done: split SO2 outputs into recording-wide audit values and sleep-only clinical-learning proxy values.
-11. Next: reconcile annotation-token burden against source AHI and scoring assumptions.
-12. Next: replace sleep-only proxy desaturation counts with a formal scoring rule.
-13. Next: decide whether to add a richer PSG dataset for clinical-style examples.
+11. Done: add source AHI alignment audit tables and CSVs.
+12. Next: manually adjudicate high-priority alignment rows against source scoring assumptions.
+13. Next: replace sleep-only proxy desaturation counts with a formal scoring rule.
+14. Next: decide whether to add a richer PSG dataset for clinical-style examples.
 
 ## Evidence Boundary
 

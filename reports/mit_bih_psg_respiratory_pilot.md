@@ -20,6 +20,16 @@ It is an educational analysis, not a diagnosis, prescription, or triage tool.
 | slp02a | 2.57 | 80 | 31.2 | severe range | 34.0 |  | -2.8 | 27.3 | 0.0 | 3.9 |
 | slp03 | 4.74 | 250 | 52.7 | severe range | 43.0 |  | 9.7 | 7.6 | 2.5 | 42.6 |
 
+## Source AHI Alignment Review
+
+This table compares the simple annotation-token burden against the source reported AHI table. It is an audit view for educational alignment, not a replacement for scorer rules or clinical adjudication.
+
+| record | annotation/h | source AHI | delta | status | priority | dominant event | review focus |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| slp03 | 52.7 | 43.0 | 9.7 | roughly_aligned | manual_review_medium | hypopnea | Review scoring assumptions if this record is used as an example. |
+| slp02a | 31.2 | 34.0 | -2.8 | roughly_aligned | low | obstructive_apnea | Token burden is close enough for the current educational proxy. |
+| slp01a | 19.1 | 17.0 | 2.1 | roughly_aligned | low | hypopnea | Token burden is close enough for the current educational proxy. |
+
 ## Channel Quality
 
 The selected records include respiration channels, but no SpO2/oximetry channels. Oxygen desaturation burden cannot be interpreted from this subset.

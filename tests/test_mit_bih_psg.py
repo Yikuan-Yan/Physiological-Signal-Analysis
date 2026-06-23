@@ -11,6 +11,7 @@ from physio_signal_lab.mit_bih_psg import (
     clinical_indicators,
     parse_aux_note,
     respiratory_metrics,
+    source_ahi_alignment,
 )
 
 
@@ -133,6 +134,47 @@ def test_respiratory_metrics_return_nan_when_no_sleep_epochs():
 
     assert math.isnan(float(metrics.iloc[0]["ahi_style_events_per_sleep_hour"]))
     assert metrics.iloc[0]["ahi_style_learning_severity"] == "unavailable"
+
+
+def test_source_ahi_alignment_separates_estimated_source_records():
+    metrics = pd.DataFrame(
+        [
+            {
+                "record_id": "slp67x",
+                "ahi_style_events_per_sleep_hour": 79.0,
+                "source_reported_ahi": 0.7,
+                "ahi_style_minus_source_reported_ahi": 78.3,
+                "source_ahi_alignment_status": "needs_manual_review",
+                "source_ahi_note": "",
+                "sleep_respiratory_event_count": 54,
+                "sleep_hours": 0.6833333333333333,
+                "hypopnea_events_per_sleep_hour": 60.0,
+                "obstructive_apnea_events_per_sleep_hour": 19.0,
+                "central_apnea_events_per_sleep_hour": 0.0,
+            },
+            {
+                "record_id": "slp41",
+                "ahi_style_events_per_sleep_hour": 0.0,
+                "source_reported_ahi": 60.0,
+                "ahi_style_minus_source_reported_ahi": -60.0,
+                "source_ahi_alignment_status": "source_ahi_estimated_annotation_unavailable",
+                "source_ahi_note": "estimated_from_visual_review_apnea_annotations_unavailable",
+                "sleep_respiratory_event_count": 0,
+                "sleep_hours": 2.0,
+                "hypopnea_events_per_sleep_hour": 0.0,
+                "obstructive_apnea_events_per_sleep_hour": 0.0,
+                "central_apnea_events_per_sleep_hour": 0.0,
+            },
+        ]
+    )
+
+    alignment = source_ahi_alignment(metrics)
+    by_record = alignment.set_index("record_id")
+
+    assert by_record.loc["slp67x", "review_priority"] == "manual_review_high"
+    assert by_record.loc["slp67x", "dominant_respiratory_event_type"] == "hypopnea"
+    assert by_record.loc["slp41", "review_priority"] == "separate_source_review"
+    assert "do not interpret annotation burden" in by_record.loc["slp41", "review_focus"]
 
 
 def test_clinical_indicators_mark_missing_spo2_boundary():

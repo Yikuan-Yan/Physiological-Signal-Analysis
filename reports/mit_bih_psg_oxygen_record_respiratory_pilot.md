@@ -22,6 +22,18 @@ It is an educational analysis, not a diagnosis, prescription, or triage tool.
 | slp66 | 2.20 | 219 | 99.5 | severe range | 65.5 |  | 34.0 | 5.9 | 0.0 | 93.6 |
 | slp67x | 0.68 | 54 | 79.0 | severe range | 0.7 |  | 78.3 | 17.6 | 55.6 | 5.9 |
 
+## Source AHI Alignment Review
+
+This table compares the simple annotation-token burden against the source reported AHI table. It is an audit view for educational alignment, not a replacement for scorer rules or clinical adjudication.
+
+| record | annotation/h | source AHI | delta | status | priority | dominant event | review focus |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| slp67x | 79.0 | 0.7 | 78.3 | needs_manual_review | manual_review_high | central_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp66 | 99.5 | 65.5 | 34.0 | needs_manual_review | manual_review_high | hypopnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp60 | 82.4 | 59.2 | 23.2 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp59 | 69.4 | 55.3 | 14.1 | needs_manual_review | manual_review_high | obstructive_apnea | Inspect event tokens, sleep/wake exclusion, and source scoring assumptions. |
+| slp61 | 49.1 | 41.2 | 7.9 | roughly_aligned | manual_review_medium | obstructive_apnea | Review scoring assumptions if this record is used as an example. |
+
 ## Channel Quality
 
 The selected records include SO2/oximetry channels, so oxygen saturation proxy metrics are computed below.

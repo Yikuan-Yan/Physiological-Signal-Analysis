@@ -40,6 +40,7 @@ class ParsedAuxNote:
 class MitBihPsgPilotOutputs:
     annotation_epochs_csv: Path
     respiratory_metrics_csv: Path
+    source_alignment_csv: Path
     oxygen_metrics_csv: Path
     event_windows_csv: Path
     channel_quality_csv: Path
@@ -93,6 +94,12 @@ def _output_paths(
         return {
             "annotation_epochs_csv": Path(outputs["annotation_epochs_csv"]),
             "respiratory_metrics_csv": Path(outputs["respiratory_metrics_csv"]),
+            "source_alignment_csv": Path(
+                outputs.get(
+                    "source_alignment_csv",
+                    "results/mit_bih_psg/pilot_source_ahi_alignment.csv",
+                )
+            ),
             "oxygen_metrics_csv": Path(outputs["oxygen_metrics_csv"]),
             "event_windows_csv": Path(outputs["event_windows_csv"]),
             "channel_quality_csv": Path(outputs["channel_quality_csv"]),
@@ -109,6 +116,10 @@ def _output_paths(
         "respiratory_metrics_csv": _scoped_mit_bih_output_path(
             prefix,
             "respiratory_metrics.csv",
+        ),
+        "source_alignment_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "source_ahi_alignment.csv",
         ),
         "oxygen_metrics_csv": _scoped_mit_bih_output_path(prefix, "oxygen_metrics.csv"),
         "event_windows_csv": _scoped_mit_bih_output_path(prefix, "event_windows.csv"),
@@ -284,6 +295,112 @@ def respiratory_metrics(
         row["source_ahi_alignment_status"] = _source_ahi_alignment_status(delta, source_note)
         rows.append(row)
     return pd.DataFrame(rows)
+
+
+def _finite_or_nan(value: Any) -> float:
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return math.nan
+    return numeric if math.isfinite(numeric) else math.nan
+
+
+def _dominant_respiratory_event_type(row: pd.Series) -> str:
+    candidates = {
+        "hypopnea": _finite_or_nan(row.get("hypopnea_events_per_sleep_hour", math.nan)),
+        "obstructive_apnea": _finite_or_nan(
+            row.get("obstructive_apnea_events_per_sleep_hour", math.nan)
+        ),
+        "central_apnea": _finite_or_nan(row.get("central_apnea_events_per_sleep_hour", math.nan)),
+    }
+    finite_candidates = {
+        key: value for key, value in candidates.items() if math.isfinite(value)
+    }
+    if not finite_candidates:
+        return "unavailable"
+    event_type, rate = max(finite_candidates.items(), key=lambda item: item[1])
+    return event_type if rate > 0 else "none"
+
+
+def source_ahi_alignment(metrics: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    for _, row in metrics.iterrows():
+        record_id = str(row["record_id"])
+        annotation_ahi = _finite_or_nan(row.get("ahi_style_events_per_sleep_hour", math.nan))
+        source_ahi = _finite_or_nan(row.get("source_reported_ahi", math.nan))
+        delta = _finite_or_nan(row.get("ahi_style_minus_source_reported_ahi", math.nan))
+        source_note = str(row.get("source_ahi_note", ""))
+        abs_delta = abs(delta) if math.isfinite(delta) else math.nan
+        percent_delta = (
+            delta / source_ahi * 100.0
+            if math.isfinite(delta) and math.isfinite(source_ahi) and source_ahi != 0
+            else math.nan
+        )
+        alignment_status = str(row.get("source_ahi_alignment_status", ""))
+        dominant_event_type = _dominant_respiratory_event_type(row)
+        if source_note:
+            review_priority = "separate_source_review"
+            review_focus = (
+                "Source AHI is estimated and apnea annotations are unavailable; do not "
+                "interpret annotation burden as true no-OSA evidence."
+            )
+        elif not math.isfinite(source_ahi):
+            review_priority = "source_ahi_missing"
+            review_focus = "Add or verify source AHI before alignment review."
+        elif math.isfinite(abs_delta) and abs_delta > 10.0:
+            review_priority = "manual_review_high"
+            review_focus = (
+                "Inspect event tokens, sleep/wake exclusion, and source scoring assumptions."
+            )
+        elif math.isfinite(abs_delta) and abs_delta > 5.0:
+            review_priority = "manual_review_medium"
+            review_focus = "Review scoring assumptions if this record is used as an example."
+        else:
+            review_priority = "low"
+            review_focus = "Token burden is close enough for the current educational proxy."
+        rows.append(
+            {
+                "record_id": record_id,
+                "annotation_ahi_style_events_per_sleep_hour": annotation_ahi,
+                "source_reported_ahi": source_ahi,
+                "delta_events_per_sleep_hour": delta,
+                "absolute_delta_events_per_sleep_hour": abs_delta,
+                "percent_delta_vs_source_ahi": percent_delta,
+                "alignment_status": alignment_status,
+                "review_priority": review_priority,
+                "dominant_respiratory_event_type": dominant_event_type,
+                "source_ahi_note": source_note,
+                "sleep_respiratory_event_count": int(row["sleep_respiratory_event_count"]),
+                "sleep_hours": _finite_or_nan(row.get("sleep_hours", math.nan)),
+                "hypopnea_events_per_sleep_hour": _finite_or_nan(
+                    row.get("hypopnea_events_per_sleep_hour", math.nan)
+                ),
+                "obstructive_apnea_events_per_sleep_hour": _finite_or_nan(
+                    row.get("obstructive_apnea_events_per_sleep_hour", math.nan)
+                ),
+                "central_apnea_events_per_sleep_hour": _finite_or_nan(
+                    row.get("central_apnea_events_per_sleep_hour", math.nan)
+                ),
+                "review_focus": review_focus,
+            }
+        )
+    priority_rank = {
+        "manual_review_high": 0,
+        "separate_source_review": 1,
+        "manual_review_medium": 2,
+        "source_ahi_missing": 3,
+        "low": 4,
+    }
+    alignment = pd.DataFrame(rows)
+    if alignment.empty:
+        return alignment
+    alignment["_priority_rank"] = alignment["review_priority"].map(priority_rank).fillna(99)
+    alignment = alignment.sort_values(
+        ["_priority_rank", "absolute_delta_events_per_sleep_hour", "record_id"],
+        ascending=[True, False, True],
+        na_position="last",
+    ).drop(columns=["_priority_rank"])
+    return alignment.reset_index(drop=True)
 
 
 def channel_quality(
@@ -1003,6 +1120,7 @@ def build_report(
     *,
     records: list[str],
     metrics: pd.DataFrame,
+    source_alignment: pd.DataFrame,
     quality: pd.DataFrame,
     oxygen: pd.DataFrame,
     event_windows: pd.DataFrame,
@@ -1026,6 +1144,22 @@ def build_report(
                 "hypopnea/h": _fmt(row["hypopnea_events_per_sleep_hour"]),
             }
         )
+
+    source_alignment_rows = []
+    if not source_alignment.empty:
+        for _, row in source_alignment.iterrows():
+            source_alignment_rows.append(
+                {
+                    "record": row["record_id"],
+                    "annotation/h": _fmt(row["annotation_ahi_style_events_per_sleep_hour"]),
+                    "source AHI": _fmt(row["source_reported_ahi"]),
+                    "delta": _fmt(row["delta_events_per_sleep_hour"]),
+                    "status": row["alignment_status"],
+                    "priority": row["review_priority"],
+                    "dominant event": row["dominant_respiratory_event_type"],
+                    "review focus": row["review_focus"],
+                }
+            )
 
     channel_rows = []
     for _, row in quality.iterrows():
@@ -1152,6 +1286,30 @@ def build_report(
                 "hypopnea/h",
             ],
         ),
+        "",
+        "## Source AHI Alignment Review",
+        "",
+        (
+            "This table compares the simple annotation-token burden against the source "
+            "reported AHI table. It is an audit view for educational alignment, not a "
+            "replacement for scorer rules or clinical adjudication."
+        ),
+        "",
+        _markdown_table(
+            source_alignment_rows[:20],
+            [
+                "record",
+                "annotation/h",
+                "source AHI",
+                "delta",
+                "status",
+                "priority",
+                "dominant event",
+                "review focus",
+            ],
+        )
+        if source_alignment_rows
+        else "No source AHI alignment rows were generated.",
         "",
         "## Channel Quality",
         "",
@@ -1312,6 +1470,7 @@ def run_mit_bih_psg_respiratory_pilot(
         source_ahi_notes=source_ahi_notes,
         epoch_seconds=epoch_seconds,
     )
+    alignment = source_ahi_alignment(metrics)
     quality = channel_quality(
         records=selected_records,
         raw_dir=raw_dir,
@@ -1356,6 +1515,7 @@ def run_mit_bih_psg_respiratory_pilot(
 
     epochs_out = output_paths["annotation_epochs_csv"]
     metrics_out = output_paths["respiratory_metrics_csv"]
+    alignment_out = output_paths["source_alignment_csv"]
     oxygen_out = output_paths["oxygen_metrics_csv"]
     event_windows_out = output_paths["event_windows_csv"]
     quality_out = output_paths["channel_quality_csv"]
@@ -1364,6 +1524,7 @@ def run_mit_bih_psg_respiratory_pilot(
     for out in (
         epochs_out,
         metrics_out,
+        alignment_out,
         oxygen_out,
         event_windows_out,
         quality_out,
@@ -1373,6 +1534,7 @@ def run_mit_bih_psg_respiratory_pilot(
         out.parent.mkdir(parents=True, exist_ok=True)
     epochs.to_csv(epochs_out, index=False)
     metrics.to_csv(metrics_out, index=False)
+    alignment.to_csv(alignment_out, index=False)
     oxygen.to_csv(oxygen_out, index=False)
     event_windows.to_csv(event_windows_out, index=False)
     quality.to_csv(quality_out, index=False)
@@ -1381,6 +1543,7 @@ def run_mit_bih_psg_respiratory_pilot(
         build_report(
             records=selected_records,
             metrics=metrics,
+            source_alignment=alignment,
             quality=quality,
             oxygen=oxygen,
             event_windows=event_windows,
@@ -1392,6 +1555,7 @@ def run_mit_bih_psg_respiratory_pilot(
     return MitBihPsgPilotOutputs(
         annotation_epochs_csv=epochs_out,
         respiratory_metrics_csv=metrics_out,
+        source_alignment_csv=alignment_out,
         oxygen_metrics_csv=oxygen_out,
         event_windows_csv=event_windows_out,
         channel_quality_csv=quality_out,

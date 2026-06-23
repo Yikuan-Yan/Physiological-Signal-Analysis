@@ -102,6 +102,7 @@ outputs:
   validation_csv: results/mit_bih_psg/validation.csv
   annotation_epochs_csv: results/mit_bih_psg/pilot_annotation_epochs.csv
   respiratory_metrics_csv: results/mit_bih_psg/pilot_respiratory_metrics.csv
+  source_alignment_csv: results/mit_bih_psg/pilot_source_ahi_alignment.csv
   oxygen_metrics_csv: results/mit_bih_psg/pilot_oxygen_metrics.csv
   event_windows_csv: results/mit_bih_psg/pilot_event_windows.csv
   event_plot_dir: figures/mit_bih_psg
