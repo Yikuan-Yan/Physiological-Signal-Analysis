@@ -21,6 +21,7 @@ Completed:
 - MIT-BIH PSG SO2-channel oxygenation analysis and event-level waveform review.
 - Eleven-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4101`.
 - Twenty-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4191`.
+- Sleep-only MIT-BIH SO2 proxy metrics so oxygen evidence is aligned to sleep epochs instead of whole-recording counts.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -172,9 +173,10 @@ Implementation outline:
 7. Done: add SO2-channel MIT-BIH records for oxygen desaturation burden.
 8. Done: generate event-level waveform windows and plots around scored respiratory events.
 9. Done: run the 18-record `complete_record` MIT-BIH report.
-10. Next: reconcile annotation-token burden against source AHI and scoring assumptions.
-11. Next: replace proxy desaturation counts with a formal scoring rule.
-12. Next: decide whether to add a richer PSG dataset for clinical-style examples.
+10. Done: split SO2 outputs into recording-wide audit values and sleep-only clinical-learning proxy values.
+11. Next: reconcile annotation-token burden against source AHI and scoring assumptions.
+12. Next: replace sleep-only proxy desaturation counts with a formal scoring rule.
+13. Next: decide whether to add a richer PSG dataset for clinical-style examples.
 
 ## Evidence Boundary
 

@@ -36,11 +36,12 @@ Implemented in this phase:
 - Downloaded and validated all 18 MIT-BIH PSG WFDB records.
 - Added `reports/mit_bih_psg_complete_record_respiratory_pilot.md`.
 - Marked `slp41` and `slp45` as source-AHI-estimated records with apnea annotations unavailable.
+- Split SO2 oxygen summaries into recording-wide audit values and sleep-only proxy values, and updated clinical indicators to use the sleep-only oxygen evidence.
 
 Remaining:
 
 - Manually reconcile simple annotation-token burden against the source AHI table and clinical scoring rules.
-- Formalize oxygen desaturation scoring instead of relying on percentile-baseline proxy counts.
+- Formalize oxygen desaturation scoring instead of relying on sleep-only percentile-baseline proxy counts.
 - Decide whether MIT-BIH PSG is sufficient for education or whether a richer PSG dataset is needed for clinical-style examples.
 - Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
 
@@ -48,7 +49,7 @@ Remaining:
 
 1. Review records where annotation-token burden differs materially from the source AHI table.
 2. Tighten event definitions if the project should approximate clinical AHI more closely.
-3. Replace proxy oxygen desaturation counting with a documented scoring rule.
+3. Replace the current sleep-only proxy oxygen desaturation counting with a documented scoring rule.
 4. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
 5. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
 

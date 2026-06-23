@@ -14,11 +14,11 @@ It is an educational analysis, not a diagnosis, prescription, or triage tool.
 
 ## Respiratory Event Burden
 
-| record | sleep h | events | burden/h | range | source AHI | delta | obstructive/h | central/h | hypopnea/h |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| slp01a | 1.93 | 37 | 19.1 | moderate range | 17.0 | 2.1 | 0.0 | 0.0 | 19.1 |
-| slp02a | 2.57 | 80 | 31.2 | severe range | 34.0 | -2.8 | 27.3 | 0.0 | 3.9 |
-| slp03 | 4.74 | 250 | 52.7 | severe range | 43.0 | 9.7 | 7.6 | 2.5 | 42.6 |
+| record | sleep h | events | burden/h | range | source AHI | source note | delta | obstructive/h | central/h | hypopnea/h |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp01a | 1.93 | 37 | 19.1 | moderate range | 17.0 |  | 2.1 | 0.0 | 0.0 | 19.1 |
+| slp02a | 2.57 | 80 | 31.2 | severe range | 34.0 |  | -2.8 | 27.3 | 0.0 | 3.9 |
+| slp03 | 4.74 | 250 | 52.7 | severe range | 43.0 |  | 9.7 | 7.6 | 2.5 | 42.6 |
 
 ## Channel Quality
 
@@ -32,13 +32,13 @@ The selected records include respiration channels, but no SpO2/oximetry channels
 
 ## Oxygen Saturation
 
-SO2 metrics are computed only when an oximetry channel is present. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
+SO2 metrics are computed only when an oximetry channel is present. The report table uses sleep-only low-oxygen and ODI proxy values; recording-wide oxygen summaries remain in the CSV for audit. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
 
-| record | SO2 channel | status | median % | min % | below 90 % | ODI 3% proxy | ODI 4% proxy |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| slp01a |  | no_spo2_channel | NA | NA | NA | NA | NA |
-| slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA |
-| slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA |
+| record | SO2 channel | status | median % | min % | below 90 % | below 90 % sleep | ODI 3% proxy | ODI 4% proxy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp01a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
+| slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
+| slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA | NA |
 
 ## Event-Level Waveform Review
 

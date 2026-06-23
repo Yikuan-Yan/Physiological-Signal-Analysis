@@ -209,6 +209,14 @@ def _severity_from_ahi_style_burden(value: float) -> str:
     return "severe_range"
 
 
+def _source_ahi_alignment_status(delta: float, source_note: str) -> str:
+    if source_note:
+        return "source_ahi_estimated_annotation_unavailable"
+    if math.isfinite(delta) and abs(delta) > 10.0:
+        return "needs_manual_review"
+    return "roughly_aligned"
+
+
 def respiratory_metrics(
     epochs: pd.DataFrame,
     *,
@@ -273,15 +281,7 @@ def respiratory_metrics(
         }
         row["ahi_style_learning_severity"] = _severity_from_ahi_style_burden(ahi_style)
         delta = float(row["ahi_style_minus_source_reported_ahi"])
-        row["source_ahi_alignment_status"] = (
-            "source_ahi_estimated_annotation_unavailable"
-            if source_note
-            else (
-            "needs_manual_review"
-            if math.isfinite(delta) and abs(delta) > 10.0
-            else "roughly_aligned"
-            )
-        )
+        row["source_ahi_alignment_status"] = _source_ahi_alignment_status(delta, source_note)
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -400,11 +400,40 @@ def _count_threshold_segments(
     return count, float(total_samples) / fs
 
 
+def _sleep_sample_mask(
+    record_epochs: pd.DataFrame,
+    *,
+    sample_count: int,
+    fs: float,
+) -> np.ndarray:
+    if sample_count < 0:
+        raise ValueError("sample_count must be non-negative")
+    if fs <= 0:
+        raise ValueError("fs must be positive")
+    mask = np.zeros(int(sample_count), dtype=bool)
+    if mask.size == 0 or record_epochs.empty:
+        return mask
+    sleep_epochs = record_epochs[record_epochs["included_sleep"].astype(bool)]
+    for _, epoch in sleep_epochs.iterrows():
+        onset_seconds = float(epoch["onset_seconds"])
+        epoch_seconds = float(epoch["epoch_seconds"])
+        if not math.isfinite(onset_seconds) or not math.isfinite(epoch_seconds):
+            continue
+        if epoch_seconds <= 0:
+            continue
+        start = max(0, int(math.floor(onset_seconds * fs)))
+        stop = min(mask.size, int(math.ceil((onset_seconds + epoch_seconds) * fs)))
+        if stop > start:
+            mask[start:stop] = True
+    return mask
+
+
 def oxygen_saturation_metrics(
     *,
     records: list[str],
     raw_dir: str | Path,
     respiratory: pd.DataFrame,
+    epochs: pd.DataFrame,
     drop_thresholds_pct: list[float],
     low_spo2_thresholds_pct: list[float],
     min_desaturation_seconds: float,
@@ -418,6 +447,9 @@ def oxygen_saturation_metrics(
 
     sleep_hours_by_record = {
         str(row["record_id"]): float(row["sleep_hours"]) for _, row in respiratory.iterrows()
+    }
+    epochs_by_record = {
+        str(record_id): group.copy() for record_id, group in epochs.groupby("record_id", sort=True)
     }
     rows: list[dict[str, Any]] = []
     for record_id in records:
@@ -440,13 +472,22 @@ def oxygen_saturation_metrics(
                 "min_spo2_pct": math.nan,
                 "p05_spo2_pct": math.nan,
                 "baseline_spo2_pct": math.nan,
+                "sleep_plausible_fraction_pct": math.nan,
+                "sleep_baseline_spo2_pct": math.nan,
                 "sleep_hours": sleep_hours,
                 "oxygen_status": "no_spo2_channel",
             }
             for threshold in low_spo2_thresholds_pct:
-                row[f"time_below_{int(threshold)}pct_pct_recording"] = math.nan
+                key = int(threshold)
+                row[f"time_below_{key}pct_pct_recording"] = math.nan
+                row[f"time_below_{key}pct_pct_sleep"] = math.nan
             for drop in drop_thresholds_pct:
                 key = int(drop)
+                row[f"recording_desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"recording_desaturation_{key}pct_minutes_proxy"] = math.nan
+                row[f"sleep_desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"sleep_desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
+                row[f"sleep_desaturation_{key}pct_minutes_proxy"] = math.nan
                 row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
                 row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
                 row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
@@ -459,9 +500,19 @@ def oxygen_saturation_metrics(
         finite = np.isfinite(signal)
         plausible = finite & (signal >= 40.0) & (signal <= 100.0)
         plausible_signal = signal[plausible]
+        record_epochs = epochs_by_record.get(record_id, pd.DataFrame())
+        sleep_mask = _sleep_sample_mask(record_epochs, sample_count=signal.size, fs=fs)
+        sleep_plausible = plausible & sleep_mask
+        sleep_plausible_signal = signal[sleep_plausible]
         finite_fraction = float(finite.sum()) / float(signal.size) if signal.size else 0.0
         plausible_fraction = (
             float(plausible.sum()) / float(signal.size) if signal.size else 0.0
+        )
+        sleep_sample_count = int(sleep_mask.sum())
+        sleep_plausible_fraction = (
+            float(sleep_plausible.sum()) / float(sleep_sample_count)
+            if sleep_sample_count > 0
+            else math.nan
         )
         row = {
             "record_id": record_id,
@@ -486,8 +537,22 @@ def oxygen_saturation_metrics(
             "baseline_spo2_pct": (
                 float(np.percentile(plausible_signal, 95)) if plausible_signal.size else math.nan
             ),
+            "sleep_plausible_fraction_pct": (
+                sleep_plausible_fraction * 100.0
+                if math.isfinite(float(sleep_plausible_fraction))
+                else math.nan
+            ),
+            "sleep_baseline_spo2_pct": (
+                float(np.percentile(sleep_plausible_signal, 95))
+                if sleep_plausible_signal.size
+                else math.nan
+            ),
             "sleep_hours": sleep_hours,
-            "oxygen_status": "available" if plausible_signal.size else "no_plausible_spo2",
+            "oxygen_status": (
+                "available"
+                if sleep_plausible_signal.size
+                else ("available_recording_only" if plausible_signal.size else "no_plausible_spo2")
+            ),
         }
         for threshold in low_spo2_thresholds_pct:
             key = int(threshold)
@@ -499,23 +564,51 @@ def oxygen_saturation_metrics(
                 )
             else:
                 row[f"time_below_{key}pct_pct_recording"] = math.nan
-        baseline = float(row["baseline_spo2_pct"])
+            if sleep_plausible_signal.size:
+                row[f"time_below_{key}pct_pct_sleep"] = (
+                    float((sleep_plausible_signal < float(threshold)).sum())
+                    / float(sleep_plausible_signal.size)
+                    * 100.0
+                )
+            else:
+                row[f"time_below_{key}pct_pct_sleep"] = math.nan
+        recording_baseline = float(row["baseline_spo2_pct"])
+        sleep_baseline = float(row["sleep_baseline_spo2_pct"])
         for drop in drop_thresholds_pct:
             key = int(drop)
-            if math.isfinite(baseline) and plausible.any():
-                threshold = baseline - float(drop)
-                count, seconds = _count_threshold_segments(
-                    plausible & (signal <= threshold),
+            if math.isfinite(recording_baseline) and plausible.any():
+                recording_threshold = recording_baseline - float(drop)
+                recording_count, recording_seconds = _count_threshold_segments(
+                    plausible & (signal <= recording_threshold),
                     fs=fs,
                     min_duration_seconds=min_desaturation_seconds,
                 )
-                row[f"desaturation_{key}pct_event_count_proxy"] = int(count)
-                row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = _safe_per_sleep_hour(
-                    count,
-                    sleep_hours,
-                )
-                row[f"desaturation_{key}pct_minutes_proxy"] = seconds / 60.0
+                row[f"recording_desaturation_{key}pct_event_count_proxy"] = int(recording_count)
+                row[f"recording_desaturation_{key}pct_minutes_proxy"] = recording_seconds / 60.0
             else:
+                row[f"recording_desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"recording_desaturation_{key}pct_minutes_proxy"] = math.nan
+            if math.isfinite(sleep_baseline) and sleep_plausible.any():
+                sleep_threshold = sleep_baseline - float(drop)
+                sleep_count, sleep_seconds = _count_threshold_segments(
+                    sleep_plausible & (signal <= sleep_threshold),
+                    fs=fs,
+                    min_duration_seconds=min_desaturation_seconds,
+                )
+                row[f"sleep_desaturation_{key}pct_event_count_proxy"] = int(sleep_count)
+                row[f"sleep_desaturation_{key}pct_events_per_sleep_hour_proxy"] = (
+                    _safe_per_sleep_hour(sleep_count, sleep_hours)
+                )
+                row[f"sleep_desaturation_{key}pct_minutes_proxy"] = sleep_seconds / 60.0
+                row[f"desaturation_{key}pct_event_count_proxy"] = int(sleep_count)
+                row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = (
+                    _safe_per_sleep_hour(sleep_count, sleep_hours)
+                )
+                row[f"desaturation_{key}pct_minutes_proxy"] = sleep_seconds / 60.0
+            else:
+                row[f"sleep_desaturation_{key}pct_event_count_proxy"] = math.nan
+                row[f"sleep_desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
+                row[f"sleep_desaturation_{key}pct_minutes_proxy"] = math.nan
                 row[f"desaturation_{key}pct_event_count_proxy"] = math.nan
                 row[f"desaturation_{key}pct_events_per_sleep_hour_proxy"] = math.nan
                 row[f"desaturation_{key}pct_minutes_proxy"] = math.nan
@@ -751,14 +844,23 @@ def clinical_indicators(
         oxygen_row = oxygen_by_record.get(record_id)
         oxygen_status = str(oxygen_row["oxygen_status"]) if oxygen_row is not None else ""
         desat3 = (
-            float(oxygen_row["desaturation_3pct_events_per_sleep_hour_proxy"])
+            float(
+                oxygen_row.get(
+                    "sleep_desaturation_3pct_events_per_sleep_hour_proxy",
+                    oxygen_row.get("desaturation_3pct_events_per_sleep_hour_proxy", math.nan),
+                )
+            )
             if oxygen_row is not None
-            and "desaturation_3pct_events_per_sleep_hour_proxy" in oxygen_row
             else math.nan
         )
         below90 = (
-            float(oxygen_row["time_below_90pct_pct_recording"])
-            if oxygen_row is not None and "time_below_90pct_pct_recording" in oxygen_row
+            float(
+                oxygen_row.get(
+                    "time_below_90pct_pct_sleep",
+                    oxygen_row.get("time_below_90pct_pct_recording", math.nan),
+                )
+            )
+            if oxygen_row is not None
             else math.nan
         )
         if severity in {"moderate_range", "severe_range"}:
@@ -838,7 +940,7 @@ def clinical_indicators(
                 ),
                 "evidence": (
                     f"3% desaturation proxy {_fmt(desat3)} events per sleep hour; "
-                    f"time below 90% SpO2 {_fmt(below90)}% of plausible samples."
+                    f"time below 90% SpO2 {_fmt(below90)}% of plausible sleep samples."
                     if oxygen_status == "available"
                     else (
                         "SpO2-like channel detected, but oxygen proxy metrics were not computed."
@@ -972,11 +1074,12 @@ def build_report(
                 "median %": _fmt(row["median_spo2_pct"]),
                 "min %": _fmt(row["min_spo2_pct"]),
                 "below 90 %": _fmt(row.get("time_below_90pct_pct_recording", math.nan)),
+                "below 90 % sleep": _fmt(row.get("time_below_90pct_pct_sleep", math.nan)),
                 "ODI 3% proxy": _fmt(
-                    row.get("desaturation_3pct_events_per_sleep_hour_proxy", math.nan)
+                    row.get("sleep_desaturation_3pct_events_per_sleep_hour_proxy", math.nan)
                 ),
                 "ODI 4% proxy": _fmt(
-                    row.get("desaturation_4pct_events_per_sleep_hour_proxy", math.nan)
+                    row.get("sleep_desaturation_4pct_events_per_sleep_hour_proxy", math.nan)
                 ),
             }
         )
@@ -1063,6 +1166,8 @@ def build_report(
         "",
         (
             "SO2 metrics are computed only when an oximetry channel is present. "
+            "The report table uses sleep-only low-oxygen and ODI proxy values; "
+            "recording-wide oxygen summaries remain in the CSV for audit. "
             "Desaturation counts are labeled as proxy metrics because this code uses "
             "a percentile-derived baseline and has not replaced clinical scoring rules."
         ),
@@ -1076,6 +1181,7 @@ def build_report(
                 "median %",
                 "min %",
                 "below 90 %",
+                "below 90 % sleep",
                 "ODI 3% proxy",
                 "ODI 4% proxy",
             ],
@@ -1216,6 +1322,7 @@ def run_mit_bih_psg_respiratory_pilot(
         records=selected_records,
         raw_dir=raw_dir,
         respiratory=metrics,
+        epochs=epochs,
         drop_thresholds_pct=[
             float(value) for value in oxygen_config.get("desaturation_drop_pct", [3, 4])
         ],

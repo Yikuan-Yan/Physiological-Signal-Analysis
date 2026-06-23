@@ -1,11 +1,13 @@
 import math
 
+import numpy as np
 import pandas as pd
 import pytest
 
 from physio_signal_lab.io.mit_bih_psg import build_mit_bih_psg_manifest
 from physio_signal_lab.mit_bih_psg import (
     _count_threshold_segments,
+    _sleep_sample_mask,
     clinical_indicators,
     parse_aux_note,
     respiratory_metrics,
@@ -177,6 +179,23 @@ def test_count_threshold_segments_enforces_minimum_duration():
     assert seconds == pytest.approx(4.0)
 
 
+def test_sleep_sample_mask_keeps_wake_samples_out_and_clips_epochs():
+    epochs = pd.DataFrame(
+        [
+            {"included_sleep": False, "onset_seconds": 0.0, "epoch_seconds": 2.0},
+            {"included_sleep": True, "onset_seconds": 2.0, "epoch_seconds": 3.0},
+            {"included_sleep": True, "onset_seconds": 6.0, "epoch_seconds": 10.0},
+        ]
+    )
+
+    mask = _sleep_sample_mask(epochs, sample_count=10, fs=1.0)
+
+    np.testing.assert_array_equal(
+        mask,
+        np.array([False, False, True, True, True, False, True, True, True, True]),
+    )
+
+
 def test_clinical_indicators_include_oxygen_proxy_when_available():
     metrics = pd.DataFrame(
         [
@@ -204,8 +223,10 @@ def test_clinical_indicators_include_oxygen_proxy_when_available():
             {
                 "record_id": "slp59",
                 "oxygen_status": "available",
-                "desaturation_3pct_events_per_sleep_hour_proxy": 14.5,
-                "time_below_90pct_pct_recording": 2.5,
+                "sleep_desaturation_3pct_events_per_sleep_hour_proxy": 14.5,
+                "desaturation_3pct_events_per_sleep_hour_proxy": 99.9,
+                "time_below_90pct_pct_sleep": 2.5,
+                "time_below_90pct_pct_recording": 88.8,
             }
         ]
     )
@@ -215,6 +236,9 @@ def test_clinical_indicators_include_oxygen_proxy_when_available():
 
     assert oxygen_row["status"] == "oxygen_proxy_available"
     assert "14.5" in oxygen_row["evidence"]
+    assert "2.5" in oxygen_row["evidence"]
+    assert "99.9" not in oxygen_row["evidence"]
+    assert "88.8" not in oxygen_row["evidence"]
 
 
 def test_build_mit_bih_psg_manifest_uses_physionet_record_files():

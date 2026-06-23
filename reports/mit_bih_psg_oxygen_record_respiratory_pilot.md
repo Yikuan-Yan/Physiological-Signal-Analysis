@@ -14,13 +14,13 @@ It is an educational analysis, not a diagnosis, prescription, or triage tool.
 
 ## Respiratory Event Burden
 
-| record | sleep h | events | burden/h | range | source AHI | delta | obstructive/h | central/h | hypopnea/h |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| slp59 | 2.65 | 184 | 69.4 | severe range | 55.3 | 14.1 | 29.1 | 17.4 | 23.0 |
-| slp60 | 3.53 | 291 | 82.4 | severe range | 59.2 | 23.2 | 57.7 | 14.2 | 10.5 |
-| slp61 | 4.97 | 244 | 49.1 | severe range | 41.2 | 7.9 | 40.9 | 1.4 | 6.8 |
-| slp66 | 2.20 | 219 | 99.5 | severe range | 65.5 | 34.0 | 5.9 | 0.0 | 93.6 |
-| slp67x | 0.68 | 54 | 79.0 | severe range | 0.7 | 78.3 | 17.6 | 55.6 | 5.9 |
+| record | sleep h | events | burden/h | range | source AHI | source note | delta | obstructive/h | central/h | hypopnea/h |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp59 | 2.65 | 184 | 69.4 | severe range | 55.3 |  | 14.1 | 29.1 | 17.4 | 23.0 |
+| slp60 | 3.53 | 291 | 82.4 | severe range | 59.2 |  | 23.2 | 57.7 | 14.2 | 10.5 |
+| slp61 | 4.97 | 244 | 49.1 | severe range | 41.2 |  | 7.9 | 40.9 | 1.4 | 6.8 |
+| slp66 | 2.20 | 219 | 99.5 | severe range | 65.5 |  | 34.0 | 5.9 | 0.0 | 93.6 |
+| slp67x | 0.68 | 54 | 79.0 | severe range | 0.7 |  | 78.3 | 17.6 | 55.6 | 5.9 |
 
 ## Channel Quality
 
@@ -45,15 +45,15 @@ The selected records include SO2/oximetry channels, so oxygen saturation proxy m
 
 ## Oxygen Saturation
 
-SO2 metrics are computed only when an oximetry channel is present. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
+SO2 metrics are computed only when an oximetry channel is present. The report table uses sleep-only low-oxygen and ODI proxy values; recording-wide oxygen summaries remain in the CSV for audit. Desaturation counts are labeled as proxy metrics because this code uses a percentile-derived baseline and has not replaced clinical scoring rules.
 
-| record | SO2 channel | status | median % | min % | below 90 % | ODI 3% proxy | ODI 4% proxy |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| slp59 | SO2 | available | 91.5 | 40.0 | 26.0 | 54.3 | 61.5 |
-| slp60 | SO2 | available | 93.0 | 70.7 | 15.2 | 50.7 | 71.9 |
-| slp61 | SO2 | available | 94.6 | 40.0 | 18.8 | 32.2 | 31.0 |
-| slp66 | SO2 | available | 90.8 | 81.9 | 30.9 | 75.5 | 47.7 |
-| slp67x | SO2 | available | 93.7 | 83.7 | 12.1 | 65.9 | 36.6 |
+| record | SO2 channel | status | median % | min % | below 90 % | below 90 % sleep | ODI 3% proxy | ODI 4% proxy |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| slp59 | SO2 | available | 91.5 | 40.0 | 26.0 | 25.3 | 41.9 | 46.0 |
+| slp60 | SO2 | available | 93.0 | 70.7 | 15.2 | 20.1 | 39.1 | 47.0 |
+| slp61 | SO2 | available | 94.6 | 40.0 | 18.8 | 19.6 | 29.4 | 28.6 |
+| slp66 | SO2 | available | 90.8 | 81.9 | 30.9 | 42.1 | 45.5 | 32.3 |
+| slp67x | SO2 | available | 93.7 | 83.7 | 12.1 | 3.6 | 41.0 | 14.6 |
 
 ## Event-Level Waveform Review
 
@@ -102,27 +102,27 @@ Generated event plots:
 | slp59 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 69.4 respiratory events per sleep hour (severe range). |
 | slp59 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 14.1 events/h. |
 | slp59 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
-| slp59 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 54.3 events per sleep hour; time below 90% SpO2 26.0% of plausible samples. |
+| slp59 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 41.9 events per sleep hour; time below 90% SpO2 25.3% of plausible sleep samples. |
 | slp59 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
 | slp60 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 82.4 respiratory events per sleep hour (severe range). |
 | slp60 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 23.2 events/h. |
 | slp60 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
-| slp60 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 50.7 events per sleep hour; time below 90% SpO2 15.2% of plausible samples. |
+| slp60 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 39.1 events per sleep hour; time below 90% SpO2 20.1% of plausible sleep samples. |
 | slp60 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
 | slp61 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 49.1 respiratory events per sleep hour (severe range). |
 | slp61 | source_consistency | annotation_burden_vs_source_ahi | roughly_aligned | Annotation burden minus source AHI is 7.9 events/h. |
 | slp61 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
-| slp61 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 32.2 events per sleep hour; time below 90% SpO2 18.8% of plausible samples. |
+| slp61 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 29.4 events per sleep hour; time below 90% SpO2 19.6% of plausible sleep samples. |
 | slp61 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
 | slp66 | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 99.5 respiratory events per sleep hour (severe range). |
 | slp66 | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 34.0 events/h. |
 | slp66 | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
-| slp66 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 75.5 events per sleep hour; time below 90% SpO2 30.9% of plausible samples. |
+| slp66 | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 45.5 events per sleep hour; time below 90% SpO2 42.1% of plausible sleep samples. |
 | slp66 | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
 | slp67x | sleep_disordered_breathing | apnea_hypopnea_annotation_burden | screen_positive_learning_signal | Annotation burden 79.0 respiratory events per sleep hour (severe range). |
 | slp67x | source_consistency | annotation_burden_vs_source_ahi | needs_manual_review | Annotation burden minus source AHI is 78.3 events/h. |
 | slp67x | signal_quality | respiration_channel_available | available | Respiration channel is present with dynamic sampled signal. |
-| slp67x | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 65.9 events per sleep hour; time below 90% SpO2 12.1% of plausible samples. |
+| slp67x | oxygenation | spo2_desaturation_burden | oxygen_proxy_available | 3% desaturation proxy 41.0 events per sleep hour; time below 90% SpO2 3.6% of plausible sleep samples. |
 | slp67x | treatment_reasoning | osa_treatment_path | educational_question_only | Respiratory-event burden can motivate PAP/oral-appliance/referral questions, but treatment selection is not made from this pilot output. |
 
 ## How To Read This
