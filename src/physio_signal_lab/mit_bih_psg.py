@@ -42,6 +42,7 @@ class MitBihPsgPilotOutputs:
     respiratory_metrics_csv: Path
     source_alignment_csv: Path
     oxygen_metrics_csv: Path
+    oxygen_artifact_review_csv: Path
     event_windows_csv: Path
     channel_quality_csv: Path
     clinical_indicators_csv: Path
@@ -101,6 +102,12 @@ def _output_paths(
                 )
             ),
             "oxygen_metrics_csv": Path(outputs["oxygen_metrics_csv"]),
+            "oxygen_artifact_review_csv": Path(
+                outputs.get(
+                    "oxygen_artifact_review_csv",
+                    "results/mit_bih_psg/pilot_oxygen_artifact_review.csv",
+                )
+            ),
             "event_windows_csv": Path(outputs["event_windows_csv"]),
             "channel_quality_csv": Path(outputs["channel_quality_csv"]),
             "clinical_indicators_csv": Path(outputs["clinical_indicators_csv"]),
@@ -122,6 +129,10 @@ def _output_paths(
             "source_ahi_alignment.csv",
         ),
         "oxygen_metrics_csv": _scoped_mit_bih_output_path(prefix, "oxygen_metrics.csv"),
+        "oxygen_artifact_review_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "oxygen_artifact_review.csv",
+        ),
         "event_windows_csv": _scoped_mit_bih_output_path(prefix, "event_windows.csv"),
         "channel_quality_csv": _scoped_mit_bih_output_path(prefix, "channel_quality.csv"),
         "clinical_indicators_csv": _scoped_mit_bih_output_path(
@@ -852,6 +863,81 @@ def oxygen_saturation_metrics(
     return pd.DataFrame(rows)
 
 
+def oxygen_artifact_review(oxygen: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, Any]] = []
+    if oxygen.empty:
+        return pd.DataFrame(rows)
+    for _, row in oxygen.iterrows():
+        record_id = str(row["record_id"])
+        oxygen_status = str(row.get("oxygen_status", ""))
+        if oxygen_status != "available":
+            rows.append(
+                {
+                    "record_id": record_id,
+                    "oxygen_review_status": "not_available",
+                    "review_priority": "none",
+                    "review_flags": "",
+                    "sleep_plausible_fraction_pct": math.nan,
+                    "min_spo2_pct": math.nan,
+                    "sleep_time_below_90pct_pct": math.nan,
+                    "sleep_odi_3pct_events_per_hour": math.nan,
+                    "sleep_odi_4pct_events_per_hour": math.nan,
+                    "sleep_odi_3pct_minus_legacy_proxy": math.nan,
+                    "review_focus": "No sleep-aligned plausible SO2 signal was available.",
+                }
+            )
+            continue
+        sleep_plausible_fraction = _finite_or_nan(
+            row.get("sleep_plausible_fraction_pct", math.nan)
+        )
+        min_spo2 = _finite_or_nan(row.get("min_spo2_pct", math.nan))
+        below90 = _finite_or_nan(row.get("time_below_90pct_pct_sleep", math.nan))
+        odi3 = _finite_or_nan(row.get("sleep_odi_3pct_events_per_hour", math.nan))
+        odi4 = _finite_or_nan(row.get("sleep_odi_4pct_events_per_hour", math.nan))
+        proxy_odi3 = _finite_or_nan(
+            row.get("sleep_desaturation_3pct_events_per_sleep_hour_proxy", math.nan)
+        )
+        odi3_minus_proxy = (
+            odi3 - proxy_odi3
+            if math.isfinite(odi3) and math.isfinite(proxy_odi3)
+            else math.nan
+        )
+        flags: list[str] = []
+        if math.isfinite(sleep_plausible_fraction) and sleep_plausible_fraction < 95.0:
+            flags.append("low_sleep_plausible_fraction")
+        if math.isfinite(min_spo2) and min_spo2 < 50.0:
+            flags.append("very_low_spo2_value")
+        if math.isfinite(odi3_minus_proxy) and abs(odi3_minus_proxy) > 15.0:
+            flags.append("odi_proxy_disagreement")
+        if math.isfinite(odi3) and math.isfinite(odi4) and odi3 > 0 and (odi4 / odi3) < 0.35:
+            flags.append("many_shallow_desaturations")
+        if math.isfinite(below90) and below90 > 30.0:
+            flags.append("high_sleep_time_below_90")
+        review_status = "artifact_review_recommended" if flags else "oxygen_review_ready"
+        review_priority = "high" if len(flags) >= 2 else ("medium" if flags else "low")
+        rows.append(
+            {
+                "record_id": record_id,
+                "oxygen_review_status": review_status,
+                "review_priority": review_priority,
+                "review_flags": ";".join(flags),
+                "sleep_plausible_fraction_pct": sleep_plausible_fraction,
+                "min_spo2_pct": min_spo2,
+                "sleep_time_below_90pct_pct": below90,
+                "sleep_odi_3pct_events_per_hour": odi3,
+                "sleep_odi_4pct_events_per_hour": odi4,
+                "sleep_odi_3pct_minus_legacy_proxy": odi3_minus_proxy,
+                "review_focus": (
+                    "Inspect SO2 waveform windows and raw channel for dropout, motion artifact, "
+                    "baseline drift, and whether desaturations align with respiratory events."
+                    if flags
+                    else "ODI output has no automatic artifact flags; spot-check event windows."
+                ),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def event_window_summaries(
     *,
     records: list[str],
@@ -1265,6 +1351,7 @@ def build_report(
     source_alignment: pd.DataFrame,
     quality: pd.DataFrame,
     oxygen: pd.DataFrame,
+    oxygen_review: pd.DataFrame,
     event_windows: pd.DataFrame,
     event_plot_paths: list[Path],
     indicators: pd.DataFrame,
@@ -1356,6 +1443,20 @@ def build_report(
                 "rule": row.get("desaturation_scoring_rule", ""),
             }
         )
+
+    oxygen_review_rows = []
+    if not oxygen_review.empty:
+        for _, row in oxygen_review.iterrows():
+            oxygen_review_rows.append(
+                {
+                    "record": row["record_id"],
+                    "status": row["oxygen_review_status"],
+                    "priority": row["review_priority"],
+                    "flags": row.get("review_flags", ""),
+                    "ODI3-proxy": _fmt(row.get("sleep_odi_3pct_minus_legacy_proxy", math.nan)),
+                    "focus": row["review_focus"],
+                }
+            )
 
     event_rows = []
     if not event_windows.empty:
@@ -1485,6 +1586,21 @@ def build_report(
                 "rule",
             ],
         ),
+        "",
+        "## Oxygen Artifact Review",
+        "",
+        (
+            "This table flags records where the ODI scorer should be reviewed against "
+            "the generated waveform windows or raw SO2 channel before using the oxygen "
+            "signal as clinical-learning evidence."
+        ),
+        "",
+        _markdown_table(
+            oxygen_review_rows,
+            ["record", "status", "priority", "flags", "ODI3-proxy", "focus"],
+        )
+        if oxygen_review_rows
+        else "No oxygen artifact review rows were generated.",
         "",
         "## Event-Level Waveform Review",
         "",
@@ -1645,6 +1761,7 @@ def run_mit_bih_psg_respiratory_pilot(
             oxygen_config.get("desaturation_baseline_window_seconds", 120.0)
         ),
     )
+    oxygen_review = oxygen_artifact_review(oxygen)
     event_config = config.get("event_review", {})
     output_paths = _output_paths(outputs, output_prefix)
     event_windows = event_window_summaries(
@@ -1670,6 +1787,7 @@ def run_mit_bih_psg_respiratory_pilot(
     metrics_out = output_paths["respiratory_metrics_csv"]
     alignment_out = output_paths["source_alignment_csv"]
     oxygen_out = output_paths["oxygen_metrics_csv"]
+    oxygen_review_out = output_paths["oxygen_artifact_review_csv"]
     event_windows_out = output_paths["event_windows_csv"]
     quality_out = output_paths["channel_quality_csv"]
     indicators_out = output_paths["clinical_indicators_csv"]
@@ -1679,6 +1797,7 @@ def run_mit_bih_psg_respiratory_pilot(
         metrics_out,
         alignment_out,
         oxygen_out,
+        oxygen_review_out,
         event_windows_out,
         quality_out,
         indicators_out,
@@ -1689,6 +1808,7 @@ def run_mit_bih_psg_respiratory_pilot(
     metrics.to_csv(metrics_out, index=False)
     alignment.to_csv(alignment_out, index=False)
     oxygen.to_csv(oxygen_out, index=False)
+    oxygen_review.to_csv(oxygen_review_out, index=False)
     event_windows.to_csv(event_windows_out, index=False)
     quality.to_csv(quality_out, index=False)
     indicators.to_csv(indicators_out, index=False)
@@ -1699,6 +1819,7 @@ def run_mit_bih_psg_respiratory_pilot(
             source_alignment=alignment,
             quality=quality,
             oxygen=oxygen,
+            oxygen_review=oxygen_review,
             event_windows=event_windows,
             event_plot_paths=event_plot_paths,
             indicators=indicators,
@@ -1710,6 +1831,7 @@ def run_mit_bih_psg_respiratory_pilot(
         respiratory_metrics_csv=metrics_out,
         source_alignment_csv=alignment_out,
         oxygen_metrics_csv=oxygen_out,
+        oxygen_artifact_review_csv=oxygen_review_out,
         event_windows_csv=event_windows_out,
         channel_quality_csv=quality_out,
         clinical_indicators_csv=indicators_out,

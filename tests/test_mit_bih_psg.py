@@ -11,6 +11,7 @@ from physio_signal_lab.mit_bih_psg import (
     _pre_event_rolling_baseline,
     _sleep_sample_mask,
     clinical_indicators,
+    oxygen_artifact_review,
     parse_aux_note,
     respiratory_metrics,
     source_ahi_alignment,
@@ -312,6 +313,34 @@ def test_clinical_indicators_include_oxygen_proxy_when_available():
     assert "14.5" not in oxygen_row["evidence"]
     assert "99.9" not in oxygen_row["evidence"]
     assert "88.8" not in oxygen_row["evidence"]
+
+
+def test_oxygen_artifact_review_flags_implausible_or_disagreeing_odi():
+    oxygen = pd.DataFrame(
+        [
+            {
+                "record_id": "slp66",
+                "oxygen_status": "available",
+                "sleep_plausible_fraction_pct": 91.0,
+                "min_spo2_pct": 48.0,
+                "time_below_90pct_pct_sleep": 42.0,
+                "sleep_odi_3pct_events_per_hour": 53.2,
+                "sleep_odi_4pct_events_per_hour": 24.1,
+                "sleep_desaturation_3pct_events_per_sleep_hour_proxy": 10.0,
+            },
+            {
+                "record_id": "slp01a",
+                "oxygen_status": "no_spo2_channel",
+            },
+        ]
+    )
+
+    review = oxygen_artifact_review(oxygen).set_index("record_id")
+
+    assert review.loc["slp66", "oxygen_review_status"] == "artifact_review_recommended"
+    assert review.loc["slp66", "review_priority"] == "high"
+    assert "very_low_spo2_value" in review.loc["slp66", "review_flags"]
+    assert review.loc["slp01a", "oxygen_review_status"] == "not_available"
 
 
 def test_build_mit_bih_psg_manifest_uses_physionet_record_files():

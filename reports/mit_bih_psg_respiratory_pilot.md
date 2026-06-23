@@ -50,6 +50,16 @@ SO2 metrics are computed only when an oximetry channel is present. The report ta
 | slp02a |  | no_spo2_channel | NA | NA | NA | NA | NA | NA | pre_event_rolling_baseline |
 | slp03 |  | no_spo2_channel | NA | NA | NA | NA | NA | NA | pre_event_rolling_baseline |
 
+## Oxygen Artifact Review
+
+This table flags records where the ODI scorer should be reviewed against the generated waveform windows or raw SO2 channel before using the oxygen signal as clinical-learning evidence.
+
+| record | status | priority | flags | ODI3-proxy | focus |
+| --- | --- | --- | --- | --- | --- |
+| slp01a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp02a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp03 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+
 ## Event-Level Waveform Review
 
 The event window table summarizes respiration channel windows around the first scored respiratory-event epochs per record. Generated figures overlay the scored 30 s event epoch on respiration and SO2 channels when available.

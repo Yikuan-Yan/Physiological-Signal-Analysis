@@ -1,0 +1,4 @@
+record_id,oxygen_review_status,review_priority,review_flags,sleep_plausible_fraction_pct,min_spo2_pct,sleep_time_below_90pct_pct,sleep_odi_3pct_events_per_hour,sleep_odi_4pct_events_per_hour,sleep_odi_3pct_minus_legacy_proxy,review_focus
+slp01a,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp02a,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp03,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.

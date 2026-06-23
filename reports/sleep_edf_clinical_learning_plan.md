@@ -23,8 +23,9 @@ This is not a publication claim-review plan. The goal is to understand what the 
 13. Done: align SO2 oxygen proxy metrics to sleep epochs while retaining recording-wide audit columns.
 14. Done: add source AHI alignment audit outputs for high-priority manual review.
 15. Done: replace the main sleep-only oxygen proxy with a documented pre-event rolling-baseline ODI scorer.
-16. Next: manually adjudicate high-priority alignment rows against source AHI scoring rules.
-17. Next: review ODI scorer artifacts and decide whether to add a richer PSG dataset.
+16. Done: add oxygen artifact review outputs for SO2 waveform/raw-channel prioritization.
+17. Next: manually adjudicate high-priority alignment rows against source AHI scoring rules.
+18. Next: decide whether to add a richer PSG dataset.
 
 ## Diagnostic Reasoning Boundaries
 

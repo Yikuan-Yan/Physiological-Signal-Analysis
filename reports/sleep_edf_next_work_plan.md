@@ -24,6 +24,7 @@ Completed:
 - Sleep-only MIT-BIH SO2 proxy metrics so oxygen evidence is aligned to sleep epochs instead of whole-recording counts.
 - MIT-BIH source AHI alignment audit outputs for prioritizing manual scoring-rule review.
 - Documented pre-event rolling-baseline ODI scorer for sleep-only SO2 desaturation evidence.
+- Oxygen artifact review outputs for prioritizing SO2 waveform/raw-channel checks.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -178,8 +179,8 @@ Implementation outline:
 10. Done: split SO2 outputs into recording-wide audit values and sleep-only clinical-learning proxy values.
 11. Done: add source AHI alignment audit tables and CSVs.
 12. Done: replace the main sleep-only oxygen proxy with a documented pre-event rolling-baseline ODI scorer.
-13. Next: manually adjudicate high-priority alignment rows against source scoring assumptions.
-14. Next: review ODI scorer artifacts against waveform windows and airflow/arousal limitations.
+13. Done: add oxygen artifact review tables and CSVs.
+14. Next: manually adjudicate high-priority alignment rows against source scoring assumptions.
 15. Next: decide whether to add a richer PSG dataset for clinical-style examples.
 
 ## Evidence Boundary

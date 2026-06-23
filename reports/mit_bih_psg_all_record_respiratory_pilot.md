@@ -124,6 +124,31 @@ SO2 metrics are computed only when an oximetry channel is present. The report ta
 | slp66 | SO2 | available | 90.8 | 81.9 | 30.9 | 42.1 | 53.2 | 24.1 | pre_event_rolling_baseline |
 | slp67x | SO2 | available | 93.7 | 83.7 | 12.1 | 3.6 | 32.2 | 16.1 | pre_event_rolling_baseline |
 
+## Oxygen Artifact Review
+
+This table flags records where the ODI scorer should be reviewed against the generated waveform windows or raw SO2 channel before using the oxygen signal as clinical-learning evidence.
+
+| record | status | priority | flags | ODI3-proxy | focus |
+| --- | --- | --- | --- | --- | --- |
+| slp01a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp01b | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp02a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp02b | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp03 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp04 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp14 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp16 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp32 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp37 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp41 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp45 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp48 | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
+| slp59 | artifact_review_recommended | medium | very_low_spo2_value | 3.8 | Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events. |
+| slp60 | oxygen_review_ready | low |  | 6.5 | ODI output has no automatic artifact flags; spot-check event windows. |
+| slp61 | artifact_review_recommended | medium | very_low_spo2_value | 5.4 | Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events. |
+| slp66 | artifact_review_recommended | medium | high_sleep_time_below_90 | 7.7 | Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events. |
+| slp67x | oxygen_review_ready | low |  | -8.8 | ODI output has no automatic artifact flags; spot-check event windows. |
+
 ## Event-Level Waveform Review
 
 The event window table summarizes respiration channel windows around the first scored respiratory-event epochs per record. Generated figures overlay the scored 30 s event epoch on respiration and SO2 channels when available.

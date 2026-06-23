@@ -1,0 +1,19 @@
+record_id,oxygen_review_status,review_priority,review_flags,sleep_plausible_fraction_pct,min_spo2_pct,sleep_time_below_90pct_pct,sleep_odi_3pct_events_per_hour,sleep_odi_4pct_events_per_hour,sleep_odi_3pct_minus_legacy_proxy,review_focus
+slp01a,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp01b,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp02a,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp02b,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp03,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp04,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp14,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp16,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp32,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp37,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp41,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp45,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp48,not_available,none,,,,,,,,No sleep-aligned plausible SO2 signal was available.
+slp59,artifact_review_recommended,medium,very_low_spo2_value,99.77295597484277,40.0,25.31126225791472,45.66037735849057,40.0,3.7735849056603783,"Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events."
+slp60,oxygen_review_ready,low,,98.04276729559749,70.6908254804958,20.149305911936775,45.56603773584906,37.07547169811321,6.509433962264154,ODI output has no automatic artifact flags; spot-check event windows.
+slp61,artifact_review_recommended,medium,very_low_spo2_value,99.43941834451901,40.02675585284281,19.631279778228826,34.83221476510067,32.21476510067114,5.436241610738257,"Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events."
+slp66,artifact_review_recommended,medium,high_sleep_time_below_90,100.0,81.87012987012987,42.14712121212121,53.18181818181818,24.09090909090909,7.727272727272727,"Inspect SO2 waveform windows and raw channel for dropout, motion artifact, baseline drift, and whether desaturations align with respiratory events."
+slp67x,oxygen_review_ready,low,,99.99739836975344,83.65714285714286,3.5786355069977542,32.19512195121951,16.097560975609756,-8.78048780487805,ODI output has no automatic artifact flags; spot-check event windows.
