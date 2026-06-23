@@ -54,7 +54,7 @@ SO2 metrics are computed only when an oximetry channel is present. The report ta
 
 This table flags records where the ODI scorer should be reviewed against the generated waveform windows or raw SO2 channel before using the oxygen signal as clinical-learning evidence.
 
-| record | status | priority | flags | ODI3-proxy | focus |
+| record | status | priority | flags | ODI3 minus proxy | focus |
 | --- | --- | --- | --- | --- | --- |
 | slp01a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
 | slp02a | not_available | none |  | NA | No sleep-aligned plausible SO2 signal was available. |
@@ -121,7 +121,7 @@ Generated event plots:
 
 ## Next Data Step
 
-Next, manually adjudicate the high-priority source AHI alignment rows, review the pre-event-baseline ODI scorer against artifacts and event windows, and then decide whether a richer PSG dataset is needed for clinical-style examples.
+Next, manually adjudicate the high-priority source AHI alignment rows, review the pre-event-baseline ODI scorer against artifacts and event windows, and then use the generated dataset-readiness decision report to decide whether a richer PSG dataset is needed for clinical-style examples.
 
 ## Source Notes
 

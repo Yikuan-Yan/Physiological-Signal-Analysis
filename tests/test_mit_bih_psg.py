@@ -10,7 +10,9 @@ from physio_signal_lab.mit_bih_psg import (
     _count_desaturation_events,
     _pre_event_rolling_baseline,
     _sleep_sample_mask,
+    build_dataset_decision_report,
     clinical_indicators,
+    dataset_readiness,
     oxygen_artifact_review,
     parse_aux_note,
     respiratory_metrics,
@@ -266,7 +268,7 @@ def test_pre_event_desaturation_scorer_uses_local_baseline_and_sleep_scope():
     assert seconds == pytest.approx(3.0)
 
 
-def test_clinical_indicators_include_oxygen_proxy_when_available():
+def test_clinical_indicators_include_oxygen_desaturation_when_available():
     metrics = pd.DataFrame(
         [
             {
@@ -341,6 +343,107 @@ def test_oxygen_artifact_review_flags_implausible_or_disagreeing_odi():
     assert review.loc["slp66", "review_priority"] == "high"
     assert "very_low_spo2_value" in review.loc["slp66", "review_flags"]
     assert review.loc["slp01a", "oxygen_review_status"] == "not_available"
+
+
+def test_dataset_readiness_separates_ready_and_manual_review_records():
+    metrics = pd.DataFrame(
+        [
+            {"record_id": "slp60", "ahi_style_learning_severity": "severe_range"},
+            {"record_id": "slp66", "ahi_style_learning_severity": "severe_range"},
+            {"record_id": "slp41", "ahi_style_learning_severity": "minimal_range"},
+        ]
+    )
+    source_alignment = pd.DataFrame(
+        [
+            {
+                "record_id": "slp60",
+                "alignment_status": "roughly_aligned",
+                "review_priority": "low",
+                "delta_events_per_sleep_hour": 2.0,
+            },
+            {
+                "record_id": "slp66",
+                "alignment_status": "needs_manual_review",
+                "review_priority": "manual_review_high",
+                "delta_events_per_sleep_hour": 34.0,
+            },
+            {
+                "record_id": "slp41",
+                "alignment_status": "source_ahi_estimated_annotation_unavailable",
+                "review_priority": "separate_source_review",
+                "delta_events_per_sleep_hour": math.nan,
+            },
+        ]
+    )
+    oxygen = pd.DataFrame(
+        [
+            {"record_id": "slp60", "oxygen_status": "available"},
+            {"record_id": "slp66", "oxygen_status": "available"},
+            {"record_id": "slp41", "oxygen_status": "no_spo2_channel"},
+        ]
+    )
+    oxygen_review = pd.DataFrame(
+        [
+            {
+                "record_id": "slp60",
+                "oxygen_review_status": "oxygen_review_ready",
+                "review_priority": "low",
+            },
+            {
+                "record_id": "slp66",
+                "oxygen_review_status": "artifact_review_recommended",
+                "review_priority": "medium",
+            },
+            {
+                "record_id": "slp41",
+                "oxygen_review_status": "not_available",
+                "review_priority": "none",
+            },
+        ]
+    )
+    quality = pd.DataFrame(
+        [
+            {
+                "record_id": record_id,
+                "is_respiration_channel": True,
+                "has_dynamic_signal": True,
+            }
+            for record_id in ["slp60", "slp66", "slp41"]
+        ]
+    )
+
+    readiness = dataset_readiness(
+        metrics=metrics,
+        source_alignment=source_alignment,
+        oxygen=oxygen,
+        oxygen_review=oxygen_review,
+        quality=quality,
+    ).set_index("record_id")
+
+    assert (
+        readiness.loc["slp60", "clinical_style_example_tier"]
+        == "respiratory_plus_oxygen_learning_ready"
+    )
+    assert readiness.loc["slp60", "oxygen_learning_ready"]
+    assert (
+        readiness.loc["slp66", "clinical_style_example_tier"]
+        == "manual_source_alignment_needed"
+    )
+    assert "source_ahi_alignment_needs_manual_review" in readiness.loc[
+        "slp66",
+        "main_limitations",
+    ]
+    assert readiness.loc["slp41", "clinical_style_example_tier"] == "source_context_only"
+
+    decision = build_dataset_decision_report(
+        records=["slp60", "slp66", "slp41"],
+        readiness=readiness.reset_index(),
+        source_alignment=source_alignment,
+        oxygen_review=oxygen_review,
+    )
+
+    assert "Do not automatically add a richer PSG dataset" in decision
+    assert "slp66" in decision
 
 
 def test_build_mit_bih_psg_manifest_uses_physionet_record_files():

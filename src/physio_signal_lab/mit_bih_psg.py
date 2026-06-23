@@ -43,10 +43,12 @@ class MitBihPsgPilotOutputs:
     source_alignment_csv: Path
     oxygen_metrics_csv: Path
     oxygen_artifact_review_csv: Path
+    dataset_readiness_csv: Path
     event_windows_csv: Path
     channel_quality_csv: Path
     clinical_indicators_csv: Path
     report_md: Path
+    dataset_decision_md: Path
 
 
 def parse_aux_note(
@@ -108,10 +110,22 @@ def _output_paths(
                     "results/mit_bih_psg/pilot_oxygen_artifact_review.csv",
                 )
             ),
+            "dataset_readiness_csv": Path(
+                outputs.get(
+                    "dataset_readiness_csv",
+                    "results/mit_bih_psg/pilot_dataset_readiness.csv",
+                )
+            ),
             "event_windows_csv": Path(outputs["event_windows_csv"]),
             "channel_quality_csv": Path(outputs["channel_quality_csv"]),
             "clinical_indicators_csv": Path(outputs["clinical_indicators_csv"]),
             "report_md": Path(outputs["report_md"]),
+            "dataset_decision_md": Path(
+                outputs.get(
+                    "dataset_decision_md",
+                    "reports/mit_bih_psg_dataset_decision.md",
+                )
+            ),
             "event_plot_dir": Path(outputs["event_plot_dir"]),
         }
     prefix = clean_output_prefix(output_prefix)
@@ -133,6 +147,10 @@ def _output_paths(
             prefix,
             "oxygen_artifact_review.csv",
         ),
+        "dataset_readiness_csv": _scoped_mit_bih_output_path(
+            prefix,
+            "dataset_readiness.csv",
+        ),
         "event_windows_csv": _scoped_mit_bih_output_path(prefix, "event_windows.csv"),
         "channel_quality_csv": _scoped_mit_bih_output_path(prefix, "channel_quality.csv"),
         "clinical_indicators_csv": _scoped_mit_bih_output_path(
@@ -140,6 +158,10 @@ def _output_paths(
             "clinical_indicators.csv",
         ),
         "report_md": _scoped_mit_bih_report_path(prefix, "respiratory_pilot.md"),
+        "dataset_decision_md": _scoped_mit_bih_report_path(
+            prefix,
+            "dataset_decision.md",
+        ),
         "event_plot_dir": Path("figures") / "mit_bih_psg" / prefix,
     }
 
@@ -938,6 +960,280 @@ def oxygen_artifact_review(oxygen: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def dataset_readiness(
+    *,
+    metrics: pd.DataFrame,
+    source_alignment: pd.DataFrame,
+    oxygen: pd.DataFrame,
+    oxygen_review: pd.DataFrame,
+    quality: pd.DataFrame,
+) -> pd.DataFrame:
+    quality_by_record = {
+        str(record_id): group.copy() for record_id, group in quality.groupby("record_id", sort=True)
+    }
+    alignment_by_record = {
+        str(row["record_id"]): row for _, row in source_alignment.iterrows()
+    }
+    oxygen_by_record = {
+        str(row["record_id"]): row for _, row in oxygen.iterrows()
+    }
+    oxygen_review_by_record = {
+        str(row["record_id"]): row for _, row in oxygen_review.iterrows()
+    }
+    rows: list[dict[str, Any]] = []
+    for _, metric in metrics.iterrows():
+        record_id = str(metric["record_id"])
+        record_quality = quality_by_record.get(record_id, pd.DataFrame())
+        respiration = record_quality.get("is_respiration_channel", pd.Series(dtype=bool))
+        dynamic = record_quality.get("has_dynamic_signal", pd.Series(dtype=bool))
+        has_dynamic_respiration = bool((respiration.astype(bool) & dynamic.astype(bool)).any())
+        alignment_row = alignment_by_record.get(record_id)
+        oxygen_row = oxygen_by_record.get(record_id)
+        oxygen_review_row = oxygen_review_by_record.get(record_id)
+        alignment_status = (
+            str(alignment_row.get("alignment_status", "missing_alignment"))
+            if alignment_row is not None
+            else "missing_alignment"
+        )
+        alignment_priority = (
+            str(alignment_row.get("review_priority", "unknown"))
+            if alignment_row is not None
+            else "unknown"
+        )
+        source_delta = (
+            _finite_or_nan(alignment_row.get("delta_events_per_sleep_hour", math.nan))
+            if alignment_row is not None
+            else math.nan
+        )
+        oxygen_status = (
+            str(oxygen_row.get("oxygen_status", "missing_oxygen"))
+            if oxygen_row is not None
+            else "missing_oxygen"
+        )
+        oxygen_review_status = (
+            str(oxygen_review_row.get("oxygen_review_status", "missing_oxygen_review"))
+            if oxygen_review_row is not None
+            else "missing_oxygen_review"
+        )
+        oxygen_review_priority = (
+            str(oxygen_review_row.get("review_priority", "unknown"))
+            if oxygen_review_row is not None
+            else "unknown"
+        )
+        has_sleep_aligned_oxygen = oxygen_status == "available"
+        oxygen_review_ready = oxygen_review_status == "oxygen_review_ready"
+        respiratory_learning_ready = (
+            alignment_status == "roughly_aligned" and has_dynamic_respiration
+        )
+        oxygen_learning_ready = has_sleep_aligned_oxygen and oxygen_review_ready
+        limitations: list[str] = []
+        if not has_dynamic_respiration:
+            limitations.append("no_dynamic_respiration_channel")
+        if alignment_status == "needs_manual_review":
+            limitations.append("source_ahi_alignment_needs_manual_review")
+        if alignment_status == "source_ahi_estimated_annotation_unavailable":
+            limitations.append("source_ahi_estimated_and_annotations_unavailable")
+        if not has_sleep_aligned_oxygen:
+            limitations.append("no_sleep_aligned_so2")
+        elif not oxygen_review_ready:
+            limitations.append("oxygen_artifact_review_needed")
+        if oxygen_learning_ready and respiratory_learning_ready:
+            tier = "respiratory_plus_oxygen_learning_ready"
+            next_action = (
+                "Use as an educational respiratory-plus-oxygen example with diagnostic caveats."
+            )
+        elif respiratory_learning_ready:
+            tier = "respiratory_annotation_learning_ready"
+            next_action = (
+                "Use for respiratory annotation burden learning; add SO2 evidence from another "
+                "record or dataset for oxygenation reasoning."
+            )
+        elif alignment_status == "source_ahi_estimated_annotation_unavailable":
+            tier = "source_context_only"
+            next_action = (
+                "Use only as a source-AHI caveat example; do not use for annotation-burden "
+                "validation."
+            )
+        elif alignment_status == "needs_manual_review":
+            tier = "manual_source_alignment_needed"
+            next_action = (
+                "Adjudicate annotation tokens against source scoring assumptions before using "
+                "for source-AHI alignment claims."
+            )
+        elif has_sleep_aligned_oxygen:
+            tier = "oxygen_learning_needs_context"
+            next_action = (
+                "Inspect SO2 artifacts and pair oxygen evidence with respiratory-event review."
+            )
+        else:
+            tier = "limited_clinical_learning_example"
+            next_action = "Use only for scoped signal or annotation inspection."
+        rows.append(
+            {
+                "record_id": record_id,
+                "ahi_style_learning_severity": str(metric["ahi_style_learning_severity"]),
+                "source_alignment_status": alignment_status,
+                "source_alignment_priority": alignment_priority,
+                "source_ahi_delta_events_per_sleep_hour": source_delta,
+                "has_dynamic_respiration_channel": has_dynamic_respiration,
+                "oxygen_status": oxygen_status,
+                "oxygen_review_status": oxygen_review_status,
+                "oxygen_review_priority": oxygen_review_priority,
+                "has_sleep_aligned_oxygen": has_sleep_aligned_oxygen,
+                "respiratory_learning_ready": respiratory_learning_ready,
+                "oxygen_learning_ready": oxygen_learning_ready,
+                "clinical_style_example_tier": tier,
+                "main_limitations": ";".join(limitations),
+                "next_action": next_action,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def build_dataset_decision_report(
+    *,
+    records: list[str],
+    readiness: pd.DataFrame,
+    source_alignment: pd.DataFrame,
+    oxygen_review: pd.DataFrame,
+) -> str:
+    record_count = len(records)
+    alignment_counts = (
+        source_alignment["alignment_status"].value_counts().to_dict()
+        if not source_alignment.empty
+        else {}
+    )
+    alignment_priority_counts = (
+        source_alignment["review_priority"].value_counts().to_dict()
+        if not source_alignment.empty
+        else {}
+    )
+    oxygen_counts = (
+        oxygen_review["oxygen_review_status"].value_counts().to_dict()
+        if not oxygen_review.empty
+        else {}
+    )
+    tier_counts = (
+        readiness["clinical_style_example_tier"].value_counts().to_dict()
+        if not readiness.empty
+        else {}
+    )
+    manual_alignment_records = (
+        readiness[
+            readiness["source_alignment_priority"].isin(
+                ["manual_review_high", "manual_review_medium"]
+            )
+        ]["record_id"].astype(str).tolist()
+        if not readiness.empty
+        else []
+    )
+    oxygen_artifact_records = (
+        readiness[
+            readiness["oxygen_review_status"] == "artifact_review_recommended"
+        ]["record_id"].astype(str).tolist()
+        if not readiness.empty
+        else []
+    )
+    respiratory_ready_records = (
+        readiness[readiness["respiratory_learning_ready"].astype(bool)]["record_id"]
+        .astype(str)
+        .tolist()
+        if not readiness.empty
+        else []
+    )
+    oxygen_ready_records = (
+        readiness[readiness["oxygen_learning_ready"].astype(bool)]["record_id"]
+        .astype(str)
+        .tolist()
+        if not readiness.empty
+        else []
+    )
+    lines = [
+        "# MIT-BIH PSG Dataset Readiness And Richer PSG Decision",
+        "",
+        "## Decision",
+        "",
+        (
+            "Keep MIT-BIH PSG as the current respiratory clinical-learning dataset. "
+            "Do not automatically add a richer PSG dataset until manual source-AHI "
+            "alignment and SO2 artifact review are completed."
+        ),
+        "",
+        "## Why",
+        "",
+        f"- Records analyzed: {record_count}.",
+        (
+            "- Source alignment statuses: "
+            + ", ".join(f"{key}={value}" for key, value in sorted(alignment_counts.items()))
+            if alignment_counts
+            else "- Source alignment statuses: none."
+        ),
+        (
+            "- Source alignment priorities: "
+            + ", ".join(
+                f"{key}={value}" for key, value in sorted(alignment_priority_counts.items())
+            )
+            if alignment_priority_counts
+            else "- Source alignment priorities: none."
+        ),
+        (
+            "- Oxygen review statuses: "
+            + ", ".join(f"{key}={value}" for key, value in sorted(oxygen_counts.items()))
+            if oxygen_counts
+            else "- Oxygen review statuses: none."
+        ),
+        (
+            "- Clinical-style example tiers: "
+            + ", ".join(f"{key}={value}" for key, value in sorted(tier_counts.items()))
+            if tier_counts
+            else "- Clinical-style example tiers: none."
+        ),
+        "",
+        "## What The Current Data Can Teach",
+        "",
+        (
+            "- Respiratory event burden from sleep/apnea annotations, especially records "
+            f"with roughly aligned source AHI: {', '.join(respiratory_ready_records) or 'none'}."
+        ),
+        (
+            "- Sleep-aligned oxygen desaturation evidence from SO2 records ready for spot "
+            f"checking: {', '.join(oxygen_ready_records) or 'none'}."
+        ),
+        "- Channel-quality and event-window review for connecting annotations to waveforms.",
+        "- Clinical reasoning boundaries: evidence can support questions and hypotheses, not diagnosis or treatment selection.",
+        "",
+        "## What Still Blocks Stronger Clinical Claims",
+        "",
+        (
+            "- High/medium-priority source-AHI review is still needed for: "
+            f"{', '.join(manual_alignment_records) or 'none'}."
+        ),
+        (
+            "- SO2 artifact review is still needed for: "
+            f"{', '.join(oxygen_artifact_records) or 'none'}."
+        ),
+        "- Full hypopnea scoring is not implemented because airflow-reduction and arousal adjudication are not available in this pipeline.",
+        "- Treatment reasoning remains conditional because symptoms, exam, comorbidities, contraindications, and clinician interpretation are outside the dataset.",
+        "",
+        "## Richer PSG Dataset Gate",
+        "",
+        "Add UCDDB, SHHS, or another richer PSG dataset only if the next research question requires one of these:",
+        "",
+        "- arousal-linked respiratory scoring rather than annotation-token burden;",
+        "- richer airflow/effort/oximetry cross-checks after MIT-BIH artifact review;",
+        "- population-scale severity, comorbidity, or treatment-risk examples;",
+        "- source-provided scored respiratory indices that can be audited against this pipeline.",
+        "",
+        "## Next Manual Work",
+        "",
+        "1. Review the high/medium-priority source-AHI rows in the relevant `*_source_ahi_alignment.csv`; for the full run, use `results/mit_bih_psg/complete_record_source_ahi_alignment.csv`.",
+        "2. Inspect SO2 waveform/raw-channel evidence from the relevant `*_oxygen_artifact_review.csv`; for the full run, use `results/mit_bih_psg/complete_record_oxygen_artifact_review.csv`.",
+        "3. Re-run the richer PSG gate after those two reviews; only then download a heavier dataset if MIT-BIH cannot support the desired examples.",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def event_window_summaries(
     *,
     records: list[str],
@@ -1288,7 +1584,7 @@ def clinical_indicators(
                     f"time below 90% SpO2 {_fmt(below90)}% of plausible sleep samples."
                     if oxygen_status == "available"
                     else (
-                        "SpO2-like channel detected, but oxygen proxy metrics were not computed."
+                        "SpO2-like channel detected, but sleep-aligned oxygen metrics were not computed."
                         if has_spo2
                         else "No SpO2/oximetry channel detected in this record."
                     )
@@ -1453,7 +1749,9 @@ def build_report(
                     "status": row["oxygen_review_status"],
                     "priority": row["review_priority"],
                     "flags": row.get("review_flags", ""),
-                    "ODI3-proxy": _fmt(row.get("sleep_odi_3pct_minus_legacy_proxy", math.nan)),
+                    "ODI3 minus proxy": _fmt(
+                        row.get("sleep_odi_3pct_minus_legacy_proxy", math.nan)
+                    ),
                     "focus": row["review_focus"],
                 }
             )
@@ -1597,7 +1895,7 @@ def build_report(
         "",
         _markdown_table(
             oxygen_review_rows,
-            ["record", "status", "priority", "flags", "ODI3-proxy", "focus"],
+            ["record", "status", "priority", "flags", "ODI3 minus proxy", "focus"],
         )
         if oxygen_review_rows
         else "No oxygen artifact review rows were generated.",
@@ -1660,8 +1958,8 @@ def build_report(
         (
             "Next, manually adjudicate the high-priority source AHI alignment rows, "
             "review the pre-event-baseline ODI scorer against artifacts and event "
-            "windows, and then decide whether a richer PSG dataset is needed for "
-            "clinical-style examples."
+            "windows, and then use the generated dataset-readiness decision report "
+            "to decide whether a richer PSG dataset is needed for clinical-style examples."
         ),
         "",
         "## Source Notes",
@@ -1762,6 +2060,13 @@ def run_mit_bih_psg_respiratory_pilot(
         ),
     )
     oxygen_review = oxygen_artifact_review(oxygen)
+    readiness = dataset_readiness(
+        metrics=metrics,
+        source_alignment=alignment,
+        oxygen=oxygen,
+        oxygen_review=oxygen_review,
+        quality=quality,
+    )
     event_config = config.get("event_review", {})
     output_paths = _output_paths(outputs, output_prefix)
     event_windows = event_window_summaries(
@@ -1788,20 +2093,24 @@ def run_mit_bih_psg_respiratory_pilot(
     alignment_out = output_paths["source_alignment_csv"]
     oxygen_out = output_paths["oxygen_metrics_csv"]
     oxygen_review_out = output_paths["oxygen_artifact_review_csv"]
+    readiness_out = output_paths["dataset_readiness_csv"]
     event_windows_out = output_paths["event_windows_csv"]
     quality_out = output_paths["channel_quality_csv"]
     indicators_out = output_paths["clinical_indicators_csv"]
     report_out = output_paths["report_md"]
+    decision_out = output_paths["dataset_decision_md"]
     for out in (
         epochs_out,
         metrics_out,
         alignment_out,
         oxygen_out,
         oxygen_review_out,
+        readiness_out,
         event_windows_out,
         quality_out,
         indicators_out,
         report_out,
+        decision_out,
     ):
         out.parent.mkdir(parents=True, exist_ok=True)
     epochs.to_csv(epochs_out, index=False)
@@ -1809,6 +2118,7 @@ def run_mit_bih_psg_respiratory_pilot(
     alignment.to_csv(alignment_out, index=False)
     oxygen.to_csv(oxygen_out, index=False)
     oxygen_review.to_csv(oxygen_review_out, index=False)
+    readiness.to_csv(readiness_out, index=False)
     event_windows.to_csv(event_windows_out, index=False)
     quality.to_csv(quality_out, index=False)
     indicators.to_csv(indicators_out, index=False)
@@ -1826,14 +2136,25 @@ def run_mit_bih_psg_respiratory_pilot(
         ),
         encoding="utf-8",
     )
+    decision_out.write_text(
+        build_dataset_decision_report(
+            records=selected_records,
+            readiness=readiness,
+            source_alignment=alignment,
+            oxygen_review=oxygen_review,
+        ),
+        encoding="utf-8",
+    )
     return MitBihPsgPilotOutputs(
         annotation_epochs_csv=epochs_out,
         respiratory_metrics_csv=metrics_out,
         source_alignment_csv=alignment_out,
         oxygen_metrics_csv=oxygen_out,
         oxygen_artifact_review_csv=oxygen_review_out,
+        dataset_readiness_csv=readiness_out,
         event_windows_csv=event_windows_out,
         channel_quality_csv=quality_out,
         clinical_indicators_csv=indicators_out,
         report_md=report_out,
+        dataset_decision_md=decision_out,
     )

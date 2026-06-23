@@ -413,10 +413,12 @@ def mit_bih_psg_respiratory_pilot(args: argparse.Namespace) -> int:
     print(f"wrote {outputs.source_alignment_csv}")
     print(f"wrote {outputs.oxygen_metrics_csv}")
     print(f"wrote {outputs.oxygen_artifact_review_csv}")
+    print(f"wrote {outputs.dataset_readiness_csv}")
     print(f"wrote {outputs.event_windows_csv}")
     print(f"wrote {outputs.channel_quality_csv}")
     print(f"wrote {outputs.clinical_indicators_csv}")
     print(f"wrote {outputs.report_md}")
+    print(f"wrote {outputs.dataset_decision_md}")
     return 0
 
 

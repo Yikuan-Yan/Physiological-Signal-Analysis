@@ -15,9 +15,11 @@ The next disease-focused phase should add a dataset with respiratory signals, ox
 | 3 | UCDDB Sleep Apnea Database | Good suspected-SDB cohort | 25 full overnight PSGs from suspected sleep-disordered breathing subjects, with apnea and sleep-stage annotations. More dataset-specific parsing work. |
 | 4 | Sleep Heart Health Study PSG Database | Best clinical richness, heavier access | Large PSG dataset with nasal airflow, respiratory effort, SaO2, arousals, respiratory events, and summary indices, but heavier access and scale. |
 
-## Recommended Next Dataset
+## Current Dataset Decision
 
-Start with the MIT-BIH Polysomnographic Database because it is small enough for fast iteration and includes both sleep/apnea annotations and respiration signals. It can bridge from the current Sleep-EDF sleep-stage pipeline to respiratory-event reasoning without immediately taking on SHHS-scale data management.
+Keep MIT-BIH PSG as the active respiratory clinical-learning dataset. Do not automatically download a richer PSG dataset yet; first complete source-AHI alignment review and SO2 artifact review.
+
+Use `reports/mit_bih_psg_complete_record_dataset_decision.md` and `results/mit_bih_psg/complete_record_dataset_readiness.csv` as the current gate output. Add UCDDB, SHHS, or another richer PSG dataset only if the next question requires arousal-linked scoring, richer airflow/effort/oximetry cross-checks, population-scale clinical context, or source-provided respiratory indices that MIT-BIH cannot support.
 
 ## Current Implementation Status
 
@@ -31,7 +33,7 @@ Implemented in this phase:
 - Added respiration and SpO2 channel availability/quality checks.
 - Added `reports/mit_bih_psg_respiratory_pilot.md` for respiratory-event clinical learning.
 - Added SO2-channel records `slp59`, `slp60`, `slp61`, `slp66`, and `slp67x`.
-- Added oxygen desaturation proxy metrics and event-level waveform review plots.
+- Added oxygen desaturation metrics and event-level waveform review plots.
 - Added `reports/mit_bih_psg_oxygen_record_respiratory_pilot.md` and `reports/mit_bih_psg_all_record_respiratory_pilot.md`.
 - Downloaded and validated all 18 MIT-BIH PSG WFDB records.
 - Added `reports/mit_bih_psg_complete_record_respiratory_pilot.md`.
@@ -40,11 +42,12 @@ Implemented in this phase:
 - Added source AHI alignment audit CSVs and report tables that prioritize records needing manual scoring-rule review.
 - Replaced the main sleep-only oxygen proxy with a documented pre-event rolling-baseline ODI scorer while retaining legacy proxy columns for audit.
 - Added oxygen artifact review CSVs and report tables to flag SO2 records needing waveform or raw-channel inspection.
+- Added dataset-readiness CSVs and richer-PSG decision reports.
 
 Remaining:
 
 - Manually adjudicate the high-priority source AHI alignment records against source scoring rules.
-- Decide whether MIT-BIH PSG is sufficient for education or whether a richer PSG dataset is needed for clinical-style examples.
+- Inspect SO2 artifact-review records before using oxygen evidence as clinical-learning examples.
 - Compare MIT-BIH PSG respiratory outputs against Sleep-EDF sleep-quality findings.
 
 ## What To Implement Next
@@ -52,7 +55,7 @@ Remaining:
 1. Review the high-priority rows in `results/mit_bih_psg/complete_record_source_ahi_alignment.csv`.
 2. Tighten event definitions if the project should approximate clinical AHI more closely.
 3. Use `results/mit_bih_psg/complete_record_oxygen_artifact_review.csv` to inspect SO2 flagged records.
-4. Add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
+4. Re-run the richer-PSG gate after manual review; add richer PSG data only if MIT-BIH PSG cannot support the desired clinical examples.
 5. Compare Sleep-EDF sleep-quality fragmentation against MIT-BIH respiratory and oxygenation evidence.
 
 ## Evidence Boundaries

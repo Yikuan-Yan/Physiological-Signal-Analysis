@@ -21,10 +21,11 @@ Completed:
 - MIT-BIH PSG SO2-channel oxygenation analysis and event-level waveform review.
 - Eleven-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4101`.
 - Twenty-record Sleep-EDF YASA runtime profile, benchmark, and clinical-learning report for `SC4001` through `SC4191`.
-- Sleep-only MIT-BIH SO2 proxy metrics so oxygen evidence is aligned to sleep epochs instead of whole-recording counts.
+- Sleep-only MIT-BIH SO2 metrics so oxygen evidence is aligned to sleep epochs instead of whole-recording counts.
 - MIT-BIH source AHI alignment audit outputs for prioritizing manual scoring-rule review.
 - Documented pre-event rolling-baseline ODI scorer for sleep-only SO2 desaturation evidence.
 - Oxygen artifact review outputs for prioritizing SO2 waveform/raw-channel checks.
+- MIT-BIH dataset-readiness outputs and a richer-PSG gate decision report.
 
 Raw EDF files remain ignored under `data/raw/`.
 
@@ -180,8 +181,9 @@ Implementation outline:
 11. Done: add source AHI alignment audit tables and CSVs.
 12. Done: replace the main sleep-only oxygen proxy with a documented pre-event rolling-baseline ODI scorer.
 13. Done: add oxygen artifact review tables and CSVs.
-14. Next: manually adjudicate high-priority alignment rows against source scoring assumptions.
-15. Next: decide whether to add a richer PSG dataset for clinical-style examples.
+14. Done: add dataset-readiness outputs and a richer-PSG gate decision.
+15. Next: manually adjudicate high-priority alignment rows against source scoring assumptions.
+16. Next: inspect SO2 artifact-review records before using oxygen evidence as clinical-learning examples.
 
 ## Evidence Boundary
 

@@ -106,8 +106,10 @@ outputs:
   source_alignment_csv: results/mit_bih_psg/pilot_source_ahi_alignment.csv
   oxygen_metrics_csv: results/mit_bih_psg/pilot_oxygen_metrics.csv
   oxygen_artifact_review_csv: results/mit_bih_psg/pilot_oxygen_artifact_review.csv
+  dataset_readiness_csv: results/mit_bih_psg/pilot_dataset_readiness.csv
   event_windows_csv: results/mit_bih_psg/pilot_event_windows.csv
   event_plot_dir: figures/mit_bih_psg
   channel_quality_csv: results/mit_bih_psg/pilot_channel_quality.csv
   clinical_indicators_csv: results/mit_bih_psg/pilot_clinical_indicators.csv
   report_md: reports/mit_bih_psg_respiratory_pilot.md
+  dataset_decision_md: reports/mit_bih_psg_dataset_decision.md
