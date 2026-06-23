@@ -1400,9 +1400,9 @@ def build_report(
         "## Next Data Step",
         "",
         (
-            "Next, compare annotation burden, oxygen desaturation proxies, and waveform "
-            "windows across a larger record set, then decide whether a richer PSG dataset "
-            "is needed for clinical-style examples."
+            "Next, manually adjudicate the high-priority source AHI alignment rows, "
+            "replace the sleep-only oxygen proxy with a documented scoring rule, and "
+            "then decide whether a richer PSG dataset is needed for clinical-style examples."
         ),
         "",
         "## Source Notes",
